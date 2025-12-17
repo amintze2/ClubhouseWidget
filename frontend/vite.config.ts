@@ -4,8 +4,6 @@
   import path from 'path';
 
   export default defineConfig({
-    base: '/ClubhouseWidget/',
-    
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -55,10 +53,20 @@
     },
     build: {
       target: 'esnext',
-      outDir: 'docs',
+      outDir: 'dist',
+      rollupOptions: {
+        output: {
+          // Ensure proper iframe embedding
+          format: 'es',
+        },
+      },
     },
     server: {
       port: 3000,
       open: true,
+      headers: {
+        // Allow iframe embedding for development
+        'X-Frame-Options': 'SAMEORIGIN',
+      },
     },
   });
