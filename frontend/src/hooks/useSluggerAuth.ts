@@ -1,3 +1,7 @@
+// React hook wrapper around SluggerWidgetSDK.
+// - Creates a singleton SDK instance for the widget.
+// - Tracks auth state (tokens + decoded user) in React state.
+// - Used by AuthContext to integrate SLUGGER auth into the app.
 import { useEffect, useState } from 'react';
 import { SluggerWidgetSDK, SluggerAuth } from '../services/slugger-widget-sdk';
 

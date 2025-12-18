@@ -1,3 +1,7 @@
+// Weekly calendar control used inside CalendarView.
+// - Shows a 7-day strip with task counts and optional game-type indicators.
+// - Provides a popover date picker to jump to a specific date.
+// - Calls onSelectDate when the user chooses a day.
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';

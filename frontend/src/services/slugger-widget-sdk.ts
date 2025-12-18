@@ -1,3 +1,7 @@
+// Lightweight SDK for integrating a widget with the SLUGGER shell via postMessage.
+// - Sends a \"SLUGGER_WIDGET_READY\" event when the widget loads.
+// - Listens for \"SLUGGER_AUTH\" messages containing JWT tokens and user info.
+// - Exposes helper methods to access auth state and make authenticated fetches.
 export interface SluggerUser {
     id: string;          // Cognito sub or database user ID
     email: string;

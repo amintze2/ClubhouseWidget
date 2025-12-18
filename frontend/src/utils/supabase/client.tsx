@@ -1,3 +1,7 @@
+// Supabase client initialization for the frontend.
+// - Reads Supabase URL and anon key from Vite env vars when available.
+// - Falls back to a URL constructed from the autop-generated projectId.
+// - Exports a singleton client used by services/api.ts.
 import { createClient } from '@supabase/supabase-js@2';
 import { projectId, publicAnonKey } from './info';
 

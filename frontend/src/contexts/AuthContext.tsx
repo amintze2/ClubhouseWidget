@@ -1,3 +1,7 @@
+// Authentication + user-data context for the frontend app.
+// - Decides between SLUGGER-based auth (iframe) and standalone login (local).
+// - Looks up the current user in Supabase by slugger_user_id.
+// - Loads joined user data (tasks, inventory, team) and exposes it to the app.
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, userApi, UserWithData, setSluggerSDK } from '../services/api';
 import { useSluggerAuth } from '../hooks/useSluggerAuth';

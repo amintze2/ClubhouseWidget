@@ -1,3 +1,7 @@
+// Budget and restocking overview for inventory.
+// - Scans all inventory categories for items below their recommended (par) stock level.
+// - Calculates quantity needed and total cost to restock, using price per unit when available.
+// - Displays a summary card plus a detailed list of items needing attention.
 import {
   Card,
   CardContent,

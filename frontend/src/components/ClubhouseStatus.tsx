@@ -1,4 +1,7 @@
 import { useState } from 'react';
+// High-level status dashboard for managers.
+// - Summarizes task completion and other operational metrics.
+// - Intended primarily for general managers to get a quick health check of the clubhouse.
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';

@@ -1,3 +1,7 @@
+// Management UI for recurring tasks.
+// - Lets users define off-day and game-day tasks that repeat automatically.
+// - Saves recurring definitions to Supabase so they can be materialized per date in other views.
+// - Supports editing and deleting existing recurring tasks.
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';

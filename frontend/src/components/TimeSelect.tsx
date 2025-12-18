@@ -1,3 +1,7 @@
+// Reusable time selection control.
+// - Generates a list of time options in 15-minute increments (00:00–23:45).
+// - Renders a labeled <select> element and reports changes via onChange.
+// - Used anywhere the user needs to pick a time (tasks, games, etc.).
 import { Label } from './ui/label';
 
 interface TimeSelectProps {

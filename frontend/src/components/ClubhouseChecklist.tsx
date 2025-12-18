@@ -1,3 +1,7 @@
+// Daily checklist view for clubhouse staff.
+// - Shows all of today's tasks for the current user, including recurring and template tasks.
+// - Applies game-day vs off-day logic using taskType to decide when tasks should appear.
+// - Provides UI to add, complete, and delete tasks from the checklist.
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Checkbox } from './ui/checkbox';

@@ -1,3 +1,7 @@
+// Meal planning view for home games.
+// - Filters the game schedule down to home games for the user's team.
+// - Loads/saves pre-game snack and post-game meal entries per game via mealsApi (Supabase).
+// - Shows whether each home game is already planned and provides a dialog to edit details.
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';

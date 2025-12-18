@@ -1,3 +1,8 @@
+// Main application shell for the Clubhouse Manager widget.
+// - Wires authentication + data loading via AuthContext and Supabase APIs.
+// - Normalizes backend data (tasks, inventory, games, meals) into frontend state.
+// - Chooses which feature view to show (checklist, calendar, inventory, etc.)
+//   based on the current user's role and sidebar navigation.
 import React, { useState, useEffect } from 'react';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter } from './components/ui/sidebar';
 import { ClipboardList, LogOut, User, Calendar, BarChart3, Trophy, FileText, Package, Repeat, DollarSign, Utensils } from 'lucide-react';

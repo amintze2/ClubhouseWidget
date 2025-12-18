@@ -1,3 +1,6 @@
+// Simple login form used in standalone (non-SLUGGER) mode.
+// - Prompts for a slugger_user_id and asks AuthContext to load the corresponding user from Supabase.
+// - Used only when the app is not running inside the SLUGGER shell iframe.
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';

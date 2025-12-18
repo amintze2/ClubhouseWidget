@@ -1,3 +1,7 @@
+// Inventory management UI for the clubhouse.
+// - Organizes inventory items by category (laundry, hygiene, medical, etc.).
+// - Allows adding, editing, deleting items and updating their stock levels.
+// - Persists all changes to Supabase via inventoryApi and keeps local state in sync.
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';

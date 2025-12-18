@@ -1,3 +1,7 @@
+// Entry point for the legacy Express backend (not used by the deployed widget).
+// - Sets up an Express server with CORS and JSON body parsing.
+// - Connects directly to Supabase to serve REST-style APIs for users, tasks, inventory, teams, and games.
+// - Kept for reference and potential future server-side needs, but the frontend now talks directly to Supabase.
 import dotenv from 'dotenv';
 // Load environment variables first
 dotenv.config();

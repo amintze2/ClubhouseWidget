@@ -1,3 +1,7 @@
+// Calendar-based view of clubhouse tasks.
+// - Shows tasks, recurring tasks, and template tasks on a weekly calendar.
+// - Uses game schedule to distinguish game days vs off days for filtering.
+// - Allows adding, toggling, and deleting tasks for specific dates.
 import React, { useState } from 'react';
 import type { MouseEvent, FormEvent } from 'react';
 import { WeeklyCalendar } from './WeeklyCalendar';

@@ -1,3 +1,7 @@
+// Game schedule management for the user's team.
+// - Displays series of games grouped by opponent and date.
+// - Allows adding new series (creates multiple game records) and deleting existing ones.
+// - Provides data for other views (checklist, calendar, meal planning).
 import { useState, useEffect } from 'react';
 import { Calendar } from './ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';

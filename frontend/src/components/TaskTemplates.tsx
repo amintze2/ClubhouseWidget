@@ -1,3 +1,6 @@
+// Task templates for game days and non-game days.
+// - Lets users define reusable task blueprints that can be applied to specific days.
+// - Distinguishes between non-game-day and game-day templates for better planning.
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';

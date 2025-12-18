@@ -1,4 +1,7 @@
-// API service for connecting directly to Supabase (no backend server needed)
+// Central data access layer for the frontend.
+// - Wraps the Supabase client in typed helpers for each table (users, tasks, inventory, games, meals, teams).
+// - Used by components and App.tsx to perform all CRUD operations.
+// - No calls to a custom backend; everything goes directly to Supabase.
 
 // Task category enum (matches PostgreSQL enum type)
 // Note: PostgreSQL enum values are stored with spaces and title case

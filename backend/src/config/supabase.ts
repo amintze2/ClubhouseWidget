@@ -1,3 +1,6 @@
+// Supabase client initialization for the backend (Express server).
+// - Reads SUPABASE_URL and SUPABASE_ANON_KEY from backend/.env.
+// - Used by route handlers to query and mutate the database.
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
