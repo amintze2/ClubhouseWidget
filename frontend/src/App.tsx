@@ -665,11 +665,11 @@ export default function App() {
   if (!user) {
     if (authLoading) {
       return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-[var(--background)] text-[var(--foreground)]">
           <div className="text-center">
             <div className="text-lg mb-2">Loading...</div>
             {isInIframe && (
-              <div className="text-sm text-gray-500">Waiting for SLUGGER authentication...</div>
+              <div className="text-sm text-[var(--ui-text-muted)]">Waiting for SLUGGER authentication...</div>
             )}
           </div>
         </div>
@@ -681,10 +681,10 @@ export default function App() {
     }
     // In iframe but no auth - show error
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)] text-[var(--foreground)]">
         <div className="text-center">
-          <div className="text-lg text-red-600 mb-2">Authentication Error</div>
-          <div className="text-sm text-gray-500">Unable to authenticate with SLUGGER platform.</div>
+          <div className="text-lg text-red-700 mb-2">Authentication Error</div>
+          <div className="text-sm text-[var(--ui-text-muted)]">Unable to authenticate with SLUGGER platform.</div>
         </div>
       </div>
     );
@@ -714,16 +714,16 @@ export default function App() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen w-full bg-gray-50">
+      <div className="flex min-h-screen w-full bg-[var(--background)] text-[var(--foreground)]">
         <Sidebar>
-          <SidebarHeader className="border-b px-6 py-4">
+          <SidebarHeader className="border-b bg-[var(--card)] px-6 py-4">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-lg bg-[color:var(--ui-accent)] flex items-center justify-center">
                 <ClipboardList className="h-5 w-5 text-white" />
               </div>
               <div>
                 <h2 className="text-base">Clubhouse Manager</h2>
-                <p className="text-xs text-gray-500">Baseball Operations</p>
+                <p className="text-xs text-[var(--ui-text-muted)]">Baseball Operations</p>
               </div>
             </div>
           </SidebarHeader>
@@ -736,8 +736,9 @@ export default function App() {
                       <SidebarMenuButton
                         onClick={() => setActiveView(item.id)}
                         isActive={activeView === item.id}
+                        className="min-h-[44px] py-2 text-base leading-6"
                       >
-                        <item.icon className="h-4 w-4" />
+                        <item.icon className="h-15 w-15" />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -746,16 +747,16 @@ export default function App() {
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter className="border-t p-4">
+          <SidebarFooter className="border-t bg-[var(--card)] p-4">
             <div className="flex items-center gap-3 mb-3 px-2">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-blue-600 text-white">
+                <AvatarFallback className="bg-[color:var(--ui-accent)] text-white">
                   {user.username.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm truncate">{user.username}</p>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-[var(--ui-text-muted)] truncate">
                   {user.team ? `${user.team} ${user.jobRole.replace(/_/g, ' ')}` : user.jobRole.replace(/_/g, ' ')}
                 </p>
               </div>
@@ -772,13 +773,13 @@ export default function App() {
         </Sidebar>
 
         <div className="flex-1">
-          <header className="bg-white border-b px-8 py-4 flex items-center gap-4">
+          <header className="bg-[var(--card)] border-b px-8 py-4 flex items-center gap-4">
             <SidebarTrigger />
             <div className="flex-1">
               <h1>{menuItems.find(item => item.id === activeView)?.label}</h1>
-              <p className="text-sm text-gray-500">Manage your clubhouse operations</p>
+              <p className="text-sm text-[var(--ui-text-muted)]">Manage your clubhouse operations</p>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-[var(--ui-text-muted)]">
               <User className="h-4 w-4" />
               <span>{user.username}</span>
             </div>
