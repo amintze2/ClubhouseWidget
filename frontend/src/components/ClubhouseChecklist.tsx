@@ -311,16 +311,17 @@ export function ClubhouseChecklist({
               <CardTitle className="text-xl">Daily Clubhouse Tasks</CardTitle>
               <CardDescription className="text-base text-slate-600">Standard tasks for off days</CardDescription>
             </div>
-            <Badge variant="secondary" className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1">
+            <Badge
+              variant="secondary"
+              className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1 !text-white"
+            >
               {completedTasks} / {totalTasks}
             </Badge>
           </div>
-          {totalTasks > 0 && (
-            <div className="pt-2">
-              <Progress value={progress} className="h-2" />
-              <p className="text-base text-slate-600 mt-2">{Math.round(progress)}% Complete</p>
-            </div>
-          )}
+          <div className="pt-2">
+            <Progress value={progress} className="h-2" />
+            <p className="text-base text-slate-600 mt-2">{Math.round(progress)}% Complete</p>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -644,7 +645,6 @@ export function ClubhouseChecklist({
   const morningProgress = calculateProgress(morningTemplateTasks, todayGameDayCompletions);
   const pregameProgress = calculateProgress(pregameTemplateTasks, todayGameDayCompletions);
   const postgameProgress = calculateProgress(postgameTemplateTasks, todayGameDayCompletions);
-  const nonGameDayProgress = calculateProgress(nonGameDayTasks, nonGameDayTaskCompletions);
 
   return (
     <div className="space-y-6">
@@ -715,29 +715,7 @@ export function ClubhouseChecklist({
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-      ) : (
-        <Accordion type="single" collapsible className="space-y-3">
-          <AccordionItem value="nongameday" className="border border-slate-200 rounded-lg bg-white shadow-sm">
-            <AccordionTrigger className="px-6 py-5 hover:no-underline text-base">
-              <div className="flex items-center justify-between w-full pr-4">
-                <div className="text-left">
-                  <h3 className="font-semibold text-lg">Daily Clubhouse Tasks</h3>
-                  <p className="text-base text-slate-600">
-                    {nonGameDayTasks.filter(t => nonGameDayTaskCompletions[t.id]).length} of {nonGameDayTasks.length} completed
-                  </p>
-                </div>
-                <Badge variant="secondary" className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1">
-                  {Math.round(nonGameDayProgress)}%
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-5">
-              <Progress value={nonGameDayProgress} className="mb-2" />
-              <p className="text-base text-slate-600">{Math.round(nonGameDayProgress)}% Complete</p>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      )}
+      ) : null}
 
       {/* Detailed Task Lists */}
       <div className="space-y-6">
