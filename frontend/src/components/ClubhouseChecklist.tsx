@@ -304,29 +304,29 @@ export function ClubhouseChecklist({
     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
     return (
-      <Card>
-        <CardHeader>
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Daily Clubhouse Tasks</CardTitle>
-              <CardDescription>Standard tasks for off days</CardDescription>
+              <CardTitle className="text-xl">Daily Clubhouse Tasks</CardTitle>
+              <CardDescription className="text-base text-slate-600">Standard tasks for off days</CardDescription>
             </div>
-            <Badge variant="secondary" className="ml-4">
+            <Badge variant="secondary" className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1">
               {completedTasks} / {totalTasks}
             </Badge>
           </div>
           {totalTasks > 0 && (
             <div className="pt-2">
               <Progress value={progress} className="h-2" />
-              <p className="text-sm text-gray-600 mt-1">{Math.round(progress)}% Complete</p>
+              <p className="text-base text-slate-600 mt-2">{Math.round(progress)}% Complete</p>
             </div>
           )}
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {totalTasks === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                <p>No tasks for today.</p>
+              <div className="text-center text-slate-500 py-8">
+                <p className="text-base">No tasks for today.</p>
               </div>
             ) : (
               <>
@@ -350,17 +350,17 @@ export function ClubhouseChecklist({
                     if (item.type === 'template') {
                       const task = item as typeof item & { id: string; title: string; description?: string; category: Task['category'] };
                       return (
-                        <div key={task.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border">
+                        <div key={task.id} className="flex items-start space-x-4 p-4 rounded-lg hover:bg-slate-50 transition-colors border border-slate-200 bg-white">
                           <Checkbox
                             id={`nongame-${task.id}`}
                             checked={nonGameDayTaskCompletions[task.id] || false}
                             onCheckedChange={() => onToggleNonGameDayTask(task.id)}
-                            className="mt-1"
+                            className="mt-1 h-5 w-5"
                           />
                           <div className="flex-1 min-w-0">
                             <label
                               htmlFor={`nongame-${task.id}`}
-                              className={`block cursor-pointer ${nonGameDayTaskCompletions[task.id] ? 'line-through text-gray-400' : ''}`}
+                              className={`block cursor-pointer text-base ${nonGameDayTaskCompletions[task.id] ? 'line-through text-slate-400' : ''}`}
                             >
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span>{task.title}</span>
@@ -372,7 +372,7 @@ export function ClubhouseChecklist({
                                 )}
                               </div>
                               {task.description && (
-                                <p className="text-sm text-gray-600">{task.description}</p>
+                                <p className="text-base text-slate-600">{task.description}</p>
                               )}
                             </label>
                           </div>
@@ -385,7 +385,7 @@ export function ClubhouseChecklist({
                       const isCompleted = recurringTaskCompletions[todayStr]?.[recurringTaskId] || false;
                       
                       return (
-                        <div key={task.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border bg-blue-50 border-blue-200">
+                        <div key={task.id} className="flex items-start space-x-4 p-4 rounded-lg hover:bg-slate-50 transition-colors border bg-blue-50 border-blue-200">
                           <Checkbox
                             id={`recurring-${task.id}`}
                             checked={isCompleted}
@@ -394,12 +394,12 @@ export function ClubhouseChecklist({
                                 onToggleRecurringTask(todayStr, recurringTaskId);
                               }
                             }}
-                            className="mt-1"
+                            className="mt-1 h-5 w-5"
                           />
                           <div className="flex-1 min-w-0">
                             <label
                               htmlFor={`recurring-${task.id}`}
-                              className={`block cursor-pointer ${isCompleted ? 'line-through text-gray-400' : ''}`}
+                              className={`block cursor-pointer text-base ${isCompleted ? 'line-through text-slate-400' : ''}`}
                             >
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span>{task.title}</span>
@@ -418,7 +418,7 @@ export function ClubhouseChecklist({
                                 )}
                               </div>
                               {task.description && (
-                                <p className="text-sm text-gray-600">{task.description}</p>
+                                <p className="text-base text-slate-600">{task.description}</p>
                               )}
                             </label>
                           </div>
@@ -427,17 +427,17 @@ export function ClubhouseChecklist({
                     } else {
                       const task = item as Task;
                       return (
-                        <div key={task.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border">
+                        <div key={task.id} className="flex items-start space-x-4 p-4 rounded-lg hover:bg-slate-50 transition-colors border border-slate-200 bg-white">
                           <Checkbox
                             id={`task-${task.id}`}
                             checked={task.completed}
                             onCheckedChange={() => onToggleTask(task.id)}
-                            className="mt-1"
+                            className="mt-1 h-5 w-5"
                           />
                           <div className="flex-1 min-w-0">
                             <label
                               htmlFor={`task-${task.id}`}
-                              className={`block cursor-pointer ${task.completed ? 'line-through text-gray-400' : ''}`}
+                              className={`block cursor-pointer text-base ${task.completed ? 'line-through text-slate-400' : ''}`}
                             >
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span>{task.title}</span>
@@ -453,7 +453,7 @@ export function ClubhouseChecklist({
                                 )}
                               </div>
                               {task.description && (
-                                <p className="text-sm text-gray-600">{task.description}</p>
+                                <p className="text-base text-slate-600">{task.description}</p>
                               )}
                             </label>
                           </div>
@@ -461,9 +461,9 @@ export function ClubhouseChecklist({
                             variant="ghost"
                             size="sm"
                             onClick={() => onDeleteTask(task.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 h-10 w-10"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-5 w-5" />
                           </Button>
                         </div>
                       );
@@ -504,40 +504,40 @@ export function ClubhouseChecklist({
     const progress = totalTasks > 0 ? ((completedTemplateTasks + completedRegularTasks) / totalTasks) * 100 : 0;
 
     return (
-      <Card>
-        <CardHeader>
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>{title}</CardTitle>
-              <CardDescription>{description}</CardDescription>
+              <CardTitle className="text-xl">{title}</CardTitle>
+              <CardDescription className="text-base text-slate-600">{description}</CardDescription>
             </div>
-            <Badge variant="secondary" className="ml-4">
+            <Badge variant="secondary" className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1">
               {completedTemplateTasks + completedRegularTasks} / {totalTasks}
             </Badge>
           </div>
           <div className="pt-2">
             <Progress value={progress} className="h-2" />
-            <p className="text-sm text-gray-600 mt-1">{Math.round(progress)}% Complete</p>
+            <p className="text-base text-slate-600 mt-2">{Math.round(progress)}% Complete</p>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {/* Template tasks */}
             {templateTasks.map((task) => (
               <div 
                 key={task.id} 
-                className={`flex items-start space-x-3 p-3 rounded-lg transition-colors border ${bgColor} ${borderColor}`}
+                className={`flex items-start space-x-4 p-4 rounded-lg transition-colors border ${bgColor} ${borderColor}`}
               >
                 <Checkbox
                   id={`gameday-task-${task.id}`}
                   checked={completions[task.id] || false}
                   onCheckedChange={() => onToggleGameDayTask(todayStr, task.id)}
-                  className="mt-1"
+                  className="mt-1 h-5 w-5"
                 />
                 <div className="flex-1 min-w-0">
                   <label
                     htmlFor={`gameday-task-${task.id}`}
-                    className={`block cursor-pointer ${completions[task.id] ? 'line-through text-gray-400' : ''}`}
+                    className={`block cursor-pointer text-base ${completions[task.id] ? 'line-through text-slate-400' : ''}`}
                   >
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span>{task.title}</span>
@@ -549,7 +549,7 @@ export function ClubhouseChecklist({
                       )}
                     </div>
                     {task.description && (
-                      <p className="text-sm text-gray-600">{task.description}</p>
+                      <p className="text-base text-slate-600">{task.description}</p>
                     )}
                   </label>
                 </div>
@@ -572,7 +572,7 @@ export function ClubhouseChecklist({
               return (
                 <div 
                   key={task.id} 
-                  className={`flex items-start space-x-3 p-3 rounded-lg transition-colors border ${
+                  className={`flex items-start space-x-4 p-4 rounded-lg transition-colors border ${
                     isRecurring ? 'bg-blue-50 border-blue-200' : bgColor
                   }`}
                 >
@@ -586,12 +586,12 @@ export function ClubhouseChecklist({
                         onToggleTask(task.id);
                       }
                     }}
-                    className="mt-1"
+                    className="mt-1 h-5 w-5"
                   />
                   <div className="flex-1 min-w-0">
                     <label
                       htmlFor={`task-${task.id}`}
-                      className={`block cursor-pointer ${isCompleted ? 'line-through text-gray-400' : ''}`}
+                      className={`block cursor-pointer text-base ${isCompleted ? 'line-through text-slate-400' : ''}`}
                     >
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span>{task.title}</span>
@@ -612,7 +612,7 @@ export function ClubhouseChecklist({
                         )}
                       </div>
                       {task.description && (
-                        <p className="text-sm text-gray-600">{task.description}</p>
+                        <p className="text-base text-slate-600">{task.description}</p>
                       )}
                     </label>
                   </div>
@@ -621,9 +621,9 @@ export function ClubhouseChecklist({
                       variant="ghost"
                       size="sm"
                       onClick={() => onDeleteTask(task.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 h-10 w-10"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-5 w-5" />
                     </Button>
                   )}
                 </div>
@@ -654,86 +654,86 @@ export function ClubhouseChecklist({
       
       {/* Summary Accordion */}
       {hasGameToday ? (
-        <Accordion type="single" collapsible className="space-y-2">
-          <AccordionItem value="morning" className="border rounded-lg bg-white shadow-sm">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
+        <Accordion type="single" collapsible className="space-y-3">
+          <AccordionItem value="morning" className="border border-slate-200 rounded-lg bg-white shadow-sm">
+            <AccordionTrigger className="px-6 py-5 hover:no-underline text-base">
               <div className="flex items-center justify-between w-full pr-4">
                 <div className="text-left">
-                  <h3 className="font-semibold">Morning / Pre-Arrival Tasks</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="font-semibold text-lg">Morning / Pre-Arrival Tasks</h3>
+                  <p className="text-base text-slate-600">
                     {morningTemplateTasks.filter(t => todayGameDayCompletions[t.id]).length} of {morningTemplateTasks.length} completed
                   </p>
                 </div>
-                <Badge variant="secondary" className="ml-4">
+                <Badge variant="secondary" className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1">
                   {Math.round(morningProgress)}%
                 </Badge>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
+            <AccordionContent className="px-6 pb-5">
               <Progress value={morningProgress} className="mb-2" />
-              <p className="text-sm text-gray-600">{Math.round(morningProgress)}% Complete</p>
+              <p className="text-base text-slate-600">{Math.round(morningProgress)}% Complete</p>
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="pregame" className="border rounded-lg bg-white shadow-sm">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
+          <AccordionItem value="pregame" className="border border-slate-200 rounded-lg bg-white shadow-sm">
+            <AccordionTrigger className="px-6 py-5 hover:no-underline text-base">
               <div className="flex items-center justify-between w-full pr-4">
                 <div className="text-left">
-                  <h3 className="font-semibold">Pre-Game Tasks</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="font-semibold text-lg">Pre-Game Tasks</h3>
+                  <p className="text-base text-slate-600">
                     {pregameTemplateTasks.filter(t => todayGameDayCompletions[t.id]).length} of {pregameTemplateTasks.length} completed
                   </p>
                 </div>
-                <Badge variant="secondary" className="ml-4">
+                <Badge variant="secondary" className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1">
                   {Math.round(pregameProgress)}%
                 </Badge>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
+            <AccordionContent className="px-6 pb-5">
               <Progress value={pregameProgress} className="mb-2" />
-              <p className="text-sm text-gray-600">{Math.round(pregameProgress)}% Complete</p>
+              <p className="text-base text-slate-600">{Math.round(pregameProgress)}% Complete</p>
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="postgame" className="border rounded-lg bg-white shadow-sm">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
+          <AccordionItem value="postgame" className="border border-slate-200 rounded-lg bg-white shadow-sm">
+            <AccordionTrigger className="px-6 py-5 hover:no-underline text-base">
               <div className="flex items-center justify-between w-full pr-4">
                 <div className="text-left">
-                  <h3 className="font-semibold">Post-Game / End of Day Tasks</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="font-semibold text-lg">Post-Game / End of Day Tasks</h3>
+                  <p className="text-base text-slate-600">
                     {postgameTemplateTasks.filter(t => todayGameDayCompletions[t.id]).length} of {postgameTemplateTasks.length} completed
                   </p>
                 </div>
-                <Badge variant="secondary" className="ml-4">
+                <Badge variant="secondary" className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1">
                   {Math.round(postgameProgress)}%
                 </Badge>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
+            <AccordionContent className="px-6 pb-5">
               <Progress value={postgameProgress} className="mb-2" />
-              <p className="text-sm text-gray-600">{Math.round(postgameProgress)}% Complete</p>
+              <p className="text-base text-slate-600">{Math.round(postgameProgress)}% Complete</p>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
       ) : (
-        <Accordion type="single" collapsible className="space-y-2">
-          <AccordionItem value="nongameday" className="border rounded-lg bg-white shadow-sm">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
+        <Accordion type="single" collapsible className="space-y-3">
+          <AccordionItem value="nongameday" className="border border-slate-200 rounded-lg bg-white shadow-sm">
+            <AccordionTrigger className="px-6 py-5 hover:no-underline text-base">
               <div className="flex items-center justify-between w-full pr-4">
                 <div className="text-left">
-                  <h3 className="font-semibold">Daily Clubhouse Tasks</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="font-semibold text-lg">Daily Clubhouse Tasks</h3>
+                  <p className="text-base text-slate-600">
                     {nonGameDayTasks.filter(t => nonGameDayTaskCompletions[t.id]).length} of {nonGameDayTasks.length} completed
                   </p>
                 </div>
-                <Badge variant="secondary" className="ml-4">
+                <Badge variant="secondary" className="ml-4 bg-[#1F3A5F] text-white text-sm px-3 py-1">
                   {Math.round(nonGameDayProgress)}%
                 </Badge>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
+            <AccordionContent className="px-6 pb-5">
               <Progress value={nonGameDayProgress} className="mb-2" />
-              <p className="text-sm text-gray-600">{Math.round(nonGameDayProgress)}% Complete</p>
+              <p className="text-base text-slate-600">{Math.round(nonGameDayProgress)}% Complete</p>
             </AccordionContent>
           </AccordionItem>
         </Accordion>

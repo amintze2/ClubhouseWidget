@@ -714,32 +714,37 @@ export default function App() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen w-full bg-[var(--background)] text-[var(--foreground)]">
-        <Sidebar>
-          <SidebarHeader className="border-b bg-[var(--card)] px-6 py-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-[color:var(--ui-accent)] flex items-center justify-center">
+      <div className="flex min-h-screen w-full bg-[#F4F6F8]">
+        <Sidebar className=" border-r border-slate-200">
+          <SidebarHeader className="border-b border-slate-200 bg-[#1F3A5F] px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-white/10 flex items-center justify-center">
                 <ClipboardList className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h2 className="text-base">Clubhouse Manager</h2>
-                <p className="text-xs text-[var(--ui-text-muted)]">Baseball Operations</p>
+                <h2 className="text-base font-semibold">Clubhouse Manager</h2>
+                <p className="text-sm">Baseball Operations</p>
+                <div className="mt-2 inline-flex items-center rounded-md bg-white/15 px-2 py-1">
+                  <span className="text-xs font-semibold">
+                    {user.team ? `${user.team} ${user.jobRole.replace(/_/g, ' ')}` : user.jobRole.replace(/_/g, ' ')}
+                  </span>
+                </div>
               </div>
             </div>
           </SidebarHeader>
-          <SidebarContent>
+          <SidebarContent className="text-slate-900">
             <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
+              <SidebarGroupContent className="text-slate-900">
+                <SidebarMenu className="text-slate-900">
                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton
                         onClick={() => setActiveView(item.id)}
                         isActive={activeView === item.id}
-                        className="min-h-[44px] py-2 text-base leading-6"
+                        className="min-h-[48px] py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-100 data-[active=true]:bg-[#E6EDF6] data-[active=true]:text-[#1F3A5F]"
                       >
-                        <item.icon className="h-15 w-15" />
-                        <span>{item.label}</span>
+                        <item.icon className="h-5 w-5 text-slate-900" />
+                        <span className="text-slate-900">{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
@@ -747,23 +752,23 @@ export default function App() {
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter className="border-t bg-[var(--card)] p-4">
-            <div className="flex items-center gap-3 mb-3 px-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-[color:var(--ui-accent)] text-white">
+          <SidebarFooter className="border-t border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-3 mb-4 px-2">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="bg-[#1F3A5F] text-white">
                   {user.username.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm truncate">{user.username}</p>
-                <p className="text-xs text-[var(--ui-text-muted)] truncate">
+                <p className="text-sm font-medium truncate">{user.username}</p>
+                <p className="text-xs text-slate-600 truncate">
                   {user.team ? `${user.team} ${user.jobRole.replace(/_/g, ' ')}` : user.jobRole.replace(/_/g, ' ')}
                 </p>
               </div>
             </div>
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full h-10 text-sm font-semibold border-slate-300 hover:border-[#1F3A5F] hover:text-[#1F3A5F]"
               onClick={handleSignOut}
             >
               <LogOut className="h-4 w-4 mr-2" />
@@ -773,15 +778,17 @@ export default function App() {
         </Sidebar>
 
         <div className="flex-1">
-          <header className="bg-[var(--card)] border-b px-8 py-4 flex items-center gap-4">
+          <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center gap-4">
             <SidebarTrigger />
             <div className="flex-1">
-              <h1>{menuItems.find(item => item.id === activeView)?.label}</h1>
-              <p className="text-sm text-[var(--ui-text-muted)]">Manage your clubhouse operations</p>
+              <h1 className="text-xl font-semibold">
+                {menuItems.find(item => item.id === activeView)?.label}
+              </h1>
+              <p className="text-sm text-slate-600">Manage your clubhouse operations</p>
             </div>
-            <div className="flex items-center gap-2 text-sm text-[var(--ui-text-muted)]">
+            <div className="flex items-center gap-2 text-sm text-slate-700">
               <User className="h-4 w-4" />
-              <span>{user.username}</span>
+              <span className="font-medium">{user.username}</span>
             </div>
           </header>
 
