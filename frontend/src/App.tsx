@@ -4,8 +4,8 @@
 // - Chooses which feature view to show (checklist, calendar, inventory, etc.)
 //   based on the current user's role and sidebar navigation.
 import React, { useState, useEffect } from 'react';
-import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter } from './components/ui/sidebar';
-import { ClipboardList, LogOut, User, Calendar, BarChart3, Trophy, FileText, Package, Repeat, DollarSign, Utensils } from 'lucide-react';
+import { SidebarProvider, SidebarTrigger } from './components/ui/sidebar';
+import { User } from 'lucide-react';
 import { ClubhouseChecklist } from './components/ClubhouseChecklist';
 import { ClubhouseStatus } from './components/ClubhouseStatus';
 import { CalendarView } from './components/CalendarView';
@@ -18,10 +18,10 @@ import { MealPlanning, PlayerDietaryInfo } from './components/MealPlanning';
 import { Login } from './components/Login';
 import { useAuth } from './contexts/AuthContext';
 import { inventoryApi, taskApi, gamesApi, teamsApi, Inventory, Game } from './services/api';
-import { Button } from './components/ui/button';
-import { Avatar, AvatarFallback } from './components/ui/avatar';
+import { RoleSidebar } from './components/RoleSidebar';
+import { getMenuItemsForRole, renderRoleContent } from './components/menus/roleMenus';
 
-type View = 'checklist' | 'status' | 'calendar' | 'games' | 'templates' | 'inventory' | 'recurring' | 'budget' | 'meals';
+type View = 'checklist' | 'status' | 'calendar' | 'games' | 'templates' | 'inventory' | 'recurring' | 'budget' | 'meals' | 'player_info' | 'general_manager_info';
 
 interface User {
   username: string;
@@ -118,7 +118,8 @@ export default function App() {
         team: backendUser.team_name || undefined,
       };
       setUser(frontendUser);
-      setActiveView(frontendUser.jobRole === 'general_manager' ? 'status' : 'checklist');
+      const initialMenuItems = getMenuItemsForRole(frontendUser.jobRole);
+      setActiveView((initialMenuItems[0]?.id as View) || 'checklist');
       setHasSetInitialView(true);
     }
   }, [backendUser, userData, hasSetInitialView]);
@@ -662,6 +663,15 @@ export default function App() {
     }
   }, [user?.team, gameSeries, lastGameDate]);
 
+  useEffect(() => {
+    if (!user) return;
+    const roleMenuItems = getMenuItemsForRole(user.jobRole);
+    const allowedViews = roleMenuItems.map((item) => item.id);
+    if (!allowedViews.includes(activeView)) {
+      setActiveView((roleMenuItems[0]?.id as View) || 'checklist');
+    }
+  }, [user, activeView]);
+
   if (!user) {
     if (authLoading) {
       return (
@@ -690,86 +700,17 @@ export default function App() {
     );
   }
 
-  // Different menu items based on role
-  const getMenuItems = () => {
-    if (user.jobRole === 'general_manager') {
-      return [
-        { id: 'status' as View, icon: BarChart3, label: 'Clubhouse Status' },
-        { id: 'games' as View, icon: Trophy, label: 'Game Schedule' },
-        { id: 'templates' as View, icon: FileText, label: 'Task Templates' },
-        { id: 'budget' as View, icon: DollarSign, label: 'Budget' },
-      ];
-    }
-    return [
-      { id: 'checklist' as View, icon: ClipboardList, label: 'Daily Checklists' },
-      { id: 'calendar' as View, icon: Calendar, label: 'Task Calendar' },
-      { id: 'recurring' as View, icon: Repeat, label: 'Recurring Tasks' },
-      { id: 'inventory' as View, icon: Package, label: 'Inventory' },
-      { id: 'meals' as View, icon: Utensils, label: 'Meal Planning' },
-      { id: 'budget' as View, icon: DollarSign, label: 'Budget' },
-    ];
-  };
-
-  const menuItems = getMenuItems();
+  const menuItems = getMenuItemsForRole(user.jobRole);
 
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full bg-gray-50">
-        <Sidebar>
-          <SidebarHeader className="border-b px-6 py-4">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                <ClipboardList className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-base">Clubhouse Manager</h2>
-                <p className="text-xs text-gray-500">Baseball Operations</p>
-              </div>
-            </div>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        onClick={() => setActiveView(item.id)}
-                        isActive={activeView === item.id}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <SidebarFooter className="border-t p-4">
-            <div className="flex items-center gap-3 mb-3 px-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-blue-600 text-white">
-                  {user.username.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm truncate">{user.username}</p>
-                <p className="text-xs text-gray-500 truncate">
-                  {user.team ? `${user.team} ${user.jobRole.replace(/_/g, ' ')}` : user.jobRole.replace(/_/g, ' ')}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </SidebarFooter>
-        </Sidebar>
+        <RoleSidebar
+          user={user}
+          activeView={activeView}
+          onSelectView={(view) => setActiveView(view as View)}
+          onSignOut={handleSignOut}
+        />
 
         <div className="flex-1">
           <header className="bg-white border-b px-8 py-4 flex items-center gap-4">
@@ -869,6 +810,7 @@ export default function App() {
             {activeView === 'budget' && (
               <Budget inventoryData={inventoryData} />
             )}
+            {renderRoleContent(user.jobRole, activeView)}
           </main>
         </div>
       </div>
