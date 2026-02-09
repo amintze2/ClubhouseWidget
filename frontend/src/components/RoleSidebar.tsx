@@ -53,7 +53,7 @@ export function RoleSidebar({
             <ClipboardList className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h2 className="text-base">{roleTitle(user.jobRole)}</h2>
+            <h2 className="text-base font-semibold">{roleTitle(user.jobRole)}</h2>
             <p className="text-xs text-gray-500">{roleSubtitle(user.jobRole)}</p>
           </div>
         </div>

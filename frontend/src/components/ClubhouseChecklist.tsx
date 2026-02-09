@@ -715,29 +715,7 @@ export function ClubhouseChecklist({
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-      ) : (
-        <Accordion type="single" collapsible className="space-y-2">
-          <AccordionItem value="nongameday" className="border rounded-lg bg-white shadow-sm">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
-              <div className="flex items-center justify-between w-full pr-4">
-                <div className="text-left">
-                  <h3 className="font-semibold">Daily Clubhouse Tasks</h3>
-                  <p className="text-sm text-gray-500">
-                    {nonGameDayTasks.filter(t => nonGameDayTaskCompletions[t.id]).length} of {nonGameDayTasks.length} completed
-                  </p>
-                </div>
-                <Badge variant="secondary" className="ml-4">
-                  {Math.round(nonGameDayProgress)}%
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
-              <Progress value={nonGameDayProgress} className="mb-2" />
-              <p className="text-sm text-gray-600">{Math.round(nonGameDayProgress)}% Complete</p>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      )}
+      ) : null}
 
       {/* Detailed Task Lists */}
       <div className="space-y-6">
