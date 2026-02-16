@@ -15,13 +15,14 @@ import { ClubhouseInventory, InventoryItem } from './components/ClubhouseInvento
 import { RecurringTasks, RecurringTask } from './components/RecurringTasks';
 import { Budget } from './components/Budget';
 import { MealPlanning, PlayerDietaryInfo } from './components/MealPlanning';
+import { ManagerPlayerReports } from './components/ManagerPlayerReports';
 import { Login } from './components/Login';
 import { useAuth } from './contexts/AuthContext';
 import { inventoryApi, taskApi, gamesApi, teamsApi, Inventory, Game } from './services/api';
 import { RoleSidebar } from './components/RoleSidebar';
 import { getMenuItemsForRole, renderRoleContent } from './components/menus/roleMenus';
 
-type View = 'checklist' | 'status' | 'calendar' | 'games' | 'templates' | 'inventory' | 'recurring' | 'budget' | 'meals' | 'player_info' | 'general_manager_info';
+type View = 'checklist' | 'status' | 'calendar' | 'games' | 'templates' | 'inventory' | 'recurring' | 'budget' | 'meals' | 'manager_player_reports' | 'player_info' | 'general_manager_info';
 
 interface User {
   username: string;
@@ -810,6 +811,9 @@ export default function App() {
             {activeView === 'budget' && (
               <Budget inventoryData={inventoryData} />
             )}
+            {activeView === 'manager_player_reports' && (
+              <ManagerPlayerReports />
+            )}
             {renderRoleContent(user.jobRole, activeView)}
           </main>
         </div>
@@ -817,3 +821,4 @@ export default function App() {
     </SidebarProvider>
   );
 }
+
