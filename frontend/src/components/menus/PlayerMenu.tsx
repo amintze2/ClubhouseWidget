@@ -1,17 +1,19 @@
-import { User } from 'lucide-react';
+import { User, Utensils, MessageSquare } from 'lucide-react';
 import type { RoleSidebarMenuItem } from '../RoleSidebar';
 import { PlayerInfo } from '../PlayerInfo';
-// import { PlayerReporting } from '../PlayerReporting';
+import { PlayerMeals } from '../PlayerMeals';
+import { PlayerReporting } from '../PlayerReporting';
 
 export const playerMenuItems: RoleSidebarMenuItem[] = [
   { id: 'player_info', icon: User, label: 'Player Info' },
-  // { id: 'player_reporting', icon: User, label: 'Player Reporting' },
+  { id: 'player_meals', icon: Utensils, label: 'Meal Schedule' },
+  { id: 'player_reporting', icon: MessageSquare, label: 'Issue Reporting' },
 ];
 
 export const renderPlayerContent = (activeView: string) => {
-  if (activeView !== 'player_info') return null;
+  if (activeView === 'player_info') return <PlayerInfo />;
+  if (activeView === 'player_meals') return <PlayerMeals />;
+  if (activeView === 'player_reporting') return <PlayerReporting />;
 
-  return <PlayerInfo /> ;
-
-
+  return null;
 };

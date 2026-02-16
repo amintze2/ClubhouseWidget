@@ -1,279 +1,247 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, KeyboardEvent, useMemo, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from './ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 
-type IssueType = 'Facility' | 'Dietary Restrictions' | 'Other';
-
-type FormErrors = {
-  title?: string;
-  description?: string;
-};
-
-const mockUpcomingTasks = [
-  { id: 't1', date: 'Feb 10, 2026', time: '8:30 AM', title: 'Morning Stretch & Mobility' },
-  { id: 't2', date: 'Feb 10, 2026', time: '12:15 PM', title: 'Team Meeting (Clubhouse)' },
-  { id: 't3', date: 'Feb 11, 2026', time: '3:00 PM', title: 'Pre-Game Arrival Window' },
-  { id: 't4', date: 'Feb 12, 2026', time: '9:00 AM', title: 'Recovery Session' },
-];
-
-const mockUpcomingMeals = [
-  { id: 'm1', date: 'Feb 10, 2026', meal: 'Lunch', menu: 'Grilled chicken bowls + fruit' },
-  { id: 'm2', date: 'Feb 10, 2026', meal: 'Post-Workout Snack', menu: 'Protein shake + banana' },
-  { id: 'm3', date: 'Feb 11, 2026', meal: 'Pre-Game Meal', menu: 'Pasta, turkey meatballs, vegetables' },
-  { id: 'm4', date: 'Feb 12, 2026', meal: 'Breakfast', menu: 'Egg scramble, oatmeal, berries' },
-];
+const DIETARY_ITEM_OPTIONS = [
+  'Vegetarian',
+  'Vegan',
+  'Gluten-free',
+  'Dairy-free',
+  'Nut allergy',
+  'Peanut allergy',
+  'Shellfish allergy',
+  'Egg allergy',
+  'Sesame allergy',
+  'Halal',
+  'Kosher',
+  'Other',
+] as const;
 
 export function PlayerInfo() {
-  const [issueType, setIssueType] = useState<IssueType>('Facility');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const { user } = useAuth();
 
-  const isDietaryIssue = issueType === 'Dietary Restrictions';
+  const playerName = useMemo(() => user?.user_name?.trim() || '', [user?.user_name]);
+  const headerText = playerName ? `Welcome ${playerName}` : 'Welcome Player';
 
-  const handleSyncGoogleCalendar = () => {
-    // TODO: Implement Google Calendar sync (OAuth + calendar event creation).
-    console.log('Google Calendar sync clicked');
-  };
+  const [preferredName, setPreferredName] = useState('');
+  const [selectedDietaryItems, setSelectedDietaryItems] = useState<string[]>([]);
+  const [itemToAdd, setItemToAdd] = useState<string | undefined>(undefined);
+  const [showOtherItemInput, setShowOtherItemInput] = useState(false);
+  const [otherItemInput, setOtherItemInput] = useState('');
+  const [otherItemError, setOtherItemError] = useState('');
+  const [otherDetails, setOtherDetails] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
 
-  const handleIssueTypeChange = (value: string) => {
-    const selectedType = value as IssueType;
-    setIssueType(selectedType);
-    setSubmitSuccess(false);
-    setErrors({});
+  const hasDuplicateItem = (value: string) =>
+    selectedDietaryItems.some((item) => item.toLowerCase() === value.toLowerCase());
 
-    if (selectedType === 'Dietary Restrictions') {
-      setTitle('Dietary Restriction');
+  const handleAddOtherItem = () => {
+    const trimmedValue = otherItemInput.trim();
+
+    if (!trimmedValue) {
+      setOtherItemError('Please specify an item before adding.');
       return;
     }
 
-    if (title === 'Dietary Restriction') {
-      setTitle('');
+    if (hasDuplicateItem(trimmedValue)) {
+      setOtherItemError('That item is already selected.');
+      return;
+    }
+
+    setSelectedDietaryItems((prev) => [...prev, trimmedValue]);
+    setOtherItemInput('');
+    setOtherItemError('');
+    setShowOtherItemInput(false);
+    setSaveMessage('');
+  };
+
+  const handleOtherItemKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleAddOtherItem();
     }
   };
 
-  const validateForm = () => {
-    const nextErrors: FormErrors = {};
+  const handleAddItem = (value: string) => {
+    setItemToAdd(undefined);
+    setSaveMessage('');
 
-    if (!isDietaryIssue && !title.trim()) {
-      nextErrors.title = 'Title is required for Facility and Other issues.';
+    if (value === 'Other') {
+      setShowOtherItemInput(true);
+      setOtherItemError('');
+      return;
     }
 
-    if (!description.trim()) {
-      nextErrors.description = 'Description is required.';
+    if (!hasDuplicateItem(value)) {
+      setSelectedDietaryItems((prev) => [...prev, value]);
     }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmitIssue = async (event: FormEvent<HTMLFormElement>) => {
+  const handleRemoveItem = (item: string) => {
+    setSelectedDietaryItems((prev) => prev.filter((entry) => entry !== item));
+    setSaveMessage('');
+  };
+
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitSuccess(false);
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsSubmitting(true);
+    setSaveMessage('');
+    setIsSaving(true);
 
     const payload = {
-      issueType,
-      title: isDietaryIssue ? 'Dietary Restriction' : title.trim(),
-      description: description.trim(),
+      preferredName: preferredName.trim(),
+      selectedDietaryItems,
+      otherDetails: otherDetails.trim(),
       submittedAt: new Date().toISOString(),
     };
 
-    // TODO: send issue to Postgres via AWS API; clubhouse managers will view submissions in a manager dashboard.
-    console.log('Player issue submission payload:', payload);
+    // TODO: send player info to Postgres via AWS API; clubhouse managers will use this info.
+    console.log('Player info payload:', payload);
 
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, 700));
 
-    if (isDietaryIssue) {
-      setTitle('Dietary Restriction');
-    } else {
-      setTitle('');
-    }
-    setDescription('');
-    setErrors({});
-    setIsSubmitting(false);
-    setSubmitSuccess(true);
+    setIsSaving(false);
+    setSaveMessage('Saved. Clubhouse managers can now use this information.');
   };
 
   return (
     <div className="space-y-6 p-8">
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>Task Calendar</CardTitle>
-              <CardDescription>Upcoming clubhouse tasks and events (read-only).</CardDescription>
+      <div className="space-y-2">
+        <h2 className="text-2xl">{headerText}</h2>
+        {playerName && <Badge variant="secondary">{playerName}</Badge>}
+        <p className="text-sm text-muted-foreground">
+          This information goes to clubhouse managers for meal planning and preparation.
+        </p>
+      </div>
+
+      <form className="space-y-6" onSubmit={handleSave}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Player Preferences</CardTitle>
+            <CardDescription>Share how staff should refer to you.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Label htmlFor="preferred-name">Preferred name</Label>
+            <Input
+              id="preferred-name"
+              value={preferredName}
+              onChange={(event) => {
+                setPreferredName(event.target.value);
+                setSaveMessage('');
+              }}
+              placeholder={playerName ? `Example: ${playerName}` : 'Example: JP'}
+            />
+            <p className="text-sm text-muted-foreground">Optional. Leave blank to use your account name.</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Dietary Restrictions and Allergies</CardTitle>
+            <CardDescription>Select anything the clubhouse team should account for.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-dietary-item">Add an item</Label>
+              <Select value={itemToAdd} onValueChange={handleAddItem}>
+                <SelectTrigger id="add-dietary-item">
+                  <SelectValue placeholder="Select a restriction or allergy" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DIETARY_ITEM_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Button type="button" variant="secondary" size="sm" onClick={handleSyncGoogleCalendar}>
-              Sync to Google Calendar
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Title</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockUpcomingTasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell>{task.date}</TableCell>
-                  <TableCell>{task.time}</TableCell>
-                  <TableCell>{task.title}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Meal Planning</CardTitle>
-          <CardDescription>Upcoming clubhouse meals (read-only).</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Meal</TableHead>
-                <TableHead>Menu</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockUpcomingMeals.map((meal) => (
-                <TableRow key={meal.id}>
-                  <TableCell>{meal.date}</TableCell>
-                  <TableCell>{meal.meal}</TableCell>
-                  <TableCell>{meal.menu}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Issue Reporting</CardTitle>
-          <CardDescription>Submit concerns directly to clubhouse managers.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmitIssue}>
-            <div className="space-y-4">
+            {showOtherItemInput && (
               <div className="space-y-2">
-                <Label htmlFor="issue-type">Issue Type</Label>
-                <Select value={issueType} onValueChange={handleIssueTypeChange}>
-                  <SelectTrigger id="issue-type">
-                    <SelectValue placeholder="Select issue type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Facility">Facility</SelectItem>
-                    <SelectItem value="Dietary Restrictions">Dietary Restrictions</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  Choose the category that best matches your issue.
-                </p>
+                <Label htmlFor="specify-other-item">Specify other item</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="specify-other-item"
+                    value={otherItemInput}
+                    onChange={(event) => {
+                      setOtherItemInput(event.target.value);
+                      if (otherItemError) {
+                        setOtherItemError('');
+                      }
+                    }}
+                    onKeyDown={handleOtherItemKeyDown}
+                    placeholder="Example: No pork, Low sodium, Avoid spicy food"
+                  />
+                  <Button type="button" onClick={handleAddOtherItem}>
+                    Add
+                  </Button>
+                </div>
+                {otherItemError && <p className="text-sm text-destructive">{otherItemError}</p>}
               </div>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor="issue-title">Title</Label>
-                <Input
-                  id="issue-title"
-                  value={isDietaryIssue ? 'Dietary Restriction' : title}
-                  onChange={(event) => {
-                    setTitle(event.target.value);
-                    setSubmitSuccess(false);
-                    if (errors.title) {
-                      setErrors((prev) => ({ ...prev, title: undefined }));
-                    }
-                  }}
-                  placeholder="Brief summary"
-                  disabled={isDietaryIssue}
-                  required={!isDietaryIssue}
-                />
-                {isDietaryIssue && (
-                  <p className="text-sm text-muted-foreground">
-                    Title is set automatically for dietary submissions.
-                  </p>
-                )}
-                {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="issue-description">
-                  {isDietaryIssue ? 'Allergy or Restriction Details' : 'Description'}
-                </Label>
-                <Textarea
-                  id="issue-description"
-                  value={description}
-                  onChange={(event) => {
-                    setDescription(event.target.value);
-                    setSubmitSuccess(false);
-                    if (errors.description) {
-                      setErrors((prev) => ({ ...prev, description: undefined }));
-                    }
-                  }}
-                  placeholder={
-                    isDietaryIssue
-                      ? 'List foods to avoid, severity, and timing (for example pre-game, post-game, or daily).'
-                      : 'Provide details for clubhouse managers.'
-                  }
-                  rows={4}
-                  required
-                />
-                {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
-              </div>
-
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Submitting...' : 'Submit Issue'}
-              </Button>
-
-              {submitSuccess && (
-                <Alert>
-                  <AlertTitle>Submitted</AlertTitle>
-                  <AlertDescription>
-                    Your issue was submitted successfully.
-                  </AlertDescription>
-                </Alert>
+            <div className="space-y-2">
+              <Label>Selected items</Label>
+              {selectedDietaryItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No items selected.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {selectedDietaryItems.map((item) => (
+                    <div key={item} className="flex items-center gap-1">
+                      <Badge variant="secondary">{item}</Badge>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveItem(item)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          </form>
-        </CardContent>
-      </Card>
+
+            <div className="space-y-2">
+              <Label htmlFor="other-details">Other details</Label>
+              <Textarea
+                id="other-details"
+                value={otherDetails}
+                onChange={(event) => {
+                  setOtherDetails(event.target.value);
+                  setSaveMessage('');
+                }}
+                placeholder="Add anything else the clubhouse team should know"
+                rows={3}
+              />
+              <p className="text-sm text-muted-foreground">
+                Add specifics like severity, cross-contamination concerns, or anything not listed above.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-2">
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+          {saveMessage && (
+            <Alert>
+              <AlertTitle>Saved</AlertTitle>
+              <AlertDescription>{saveMessage}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </form>
     </div>
   );
 }

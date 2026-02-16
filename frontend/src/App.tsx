@@ -717,7 +717,7 @@ export default function App() {
             <SidebarTrigger />
             <div className="flex-1">
               <h1 className="font-semibold text-xl">{menuItems.find(item => item.id === activeView)?.label}</h1>
-              <p className="text-sm text-gray-500">Manage your clubhouse operations</p>
+              <p className="text-sm text-gray-500">Clubhouse Management Widget</p>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <User className="h-4 w-4" />
