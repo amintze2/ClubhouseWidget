@@ -15,13 +15,14 @@ import { ClubhouseInventory, InventoryItem } from './components/ClubhouseInvento
 import { RecurringTasks, RecurringTask } from './components/RecurringTasks';
 import { Budget } from './components/Budget';
 import { MealPlanning, PlayerDietaryInfo } from './components/MealPlanning';
+import { ManagerPlayerReports } from './components/ManagerPlayerReports';
 import { Login } from './components/Login';
 import { useAuth } from './contexts/AuthContext';
 import { inventoryApi, taskApi, gamesApi, teamsApi, Inventory, Game } from './services/api';
 import { RoleSidebar } from './components/RoleSidebar';
 import { getMenuItemsForRole, renderRoleContent } from './components/menus/roleMenus';
 
-type View = 'checklist' | 'status' | 'calendar' | 'games' | 'templates' | 'inventory' | 'recurring' | 'budget' | 'meals' | 'player_info' | 'general_manager_info';
+type View = 'checklist' | 'status' | 'calendar' | 'games' | 'templates' | 'inventory' | 'recurring' | 'budget' | 'meals' | 'manager_player_reports' | 'player_info' | 'general_manager_info';
 
 interface User {
   username: string;
@@ -717,7 +718,7 @@ export default function App() {
             <SidebarTrigger />
             <div className="flex-1">
               <h1 className="font-semibold text-xl">{menuItems.find(item => item.id === activeView)?.label}</h1>
-              <p className="text-sm text-gray-500">Manage your clubhouse operations</p>
+              <p className="text-sm text-gray-500">Clubhouse Management Widget</p>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <User className="h-4 w-4" />
@@ -810,6 +811,9 @@ export default function App() {
             {activeView === 'budget' && (
               <Budget inventoryData={inventoryData} />
             )}
+            {activeView === 'manager_player_reports' && (
+              <ManagerPlayerReports />
+            )}
             {renderRoleContent(user.jobRole, activeView)}
           </main>
         </div>
@@ -817,3 +821,4 @@ export default function App() {
     </SidebarProvider>
   );
 }
+
