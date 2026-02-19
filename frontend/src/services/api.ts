@@ -509,6 +509,41 @@ export const teamsApi = {
   },
 };
 
+export interface Issue {
+  id: number;
+  player_id: number | null;
+  player_team: string | null;
+  team_context: 'home' | 'away';
+  away_team: string | null;
+  description: string;
+  created_at: string;
+}
+
+// Issues API calls
+export const issuesApi = {
+  createIssue: async (data: Omit<Issue, 'id' | 'created_at'>): Promise<Issue> => {
+    const { data: result, error } = await supabase
+      .from('issues')
+      .insert([data])
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    if (!result) throw new Error('Failed to submit issue');
+    return result;
+  },
+
+  getAllIssues: async (): Promise<Issue[]> => {
+    const { data, error } = await supabase
+      .from('issues')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+};
+
 // Meals API calls
 export const mealsApi = {
   // Get meal by game ID

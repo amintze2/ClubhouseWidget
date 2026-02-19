@@ -5,7 +5,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, userApi, UserWithData, setSluggerSDK } from '../services/api';
 import { useSluggerAuth } from '../hooks/useSluggerAuth';
-import { SluggerUser } from '../services/slugger-widget-sdk';
+import { SluggerUser, SluggerAuth } from '../services/slugger-widget-sdk';
 
 interface AuthContextType {
   user: User | null;
@@ -50,8 +50,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Load user from SLUGGER when authenticated
   useEffect(() => {
-    if (isInIframe && sluggerUser && sdk && !sluggerLoading) {
-      loadUserFromSlugger(sluggerUser);
+    if (isInIframe && sluggerUser && sluggerAuth && sdk && !sluggerLoading) {
+      loadUserFromSlugger(sluggerUser, sluggerAuth);
     } else if (!isInIframe) {
       // Not in iframe - use manual login
       loadUserFromStorage();
@@ -62,19 +62,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Auth error in iframe
       setLoading(false);
     }
-  }, [sluggerUser, sluggerLoading, sluggerError, sdk]);
+  }, [sluggerUser, sluggerAuth, sluggerLoading, sluggerError, sdk]);
 
-  const loadUserFromSlugger = async (sluggerUser: SluggerUser) => {
+  const loadUserFromSlugger = async (sluggerUser: SluggerUser, auth: SluggerAuth) => {
     try {
       setLoading(true);
-      // Use slugger_user_id from SLUGGER user (sluggerUser.id is the Cognito sub)
-      const backendUser = await userApi.getUserBySluggerId(sluggerUser.id);
-      const fullUserData = await userApi.getUserWithData(backendUser.id);
-      setUser(backendUser);
-      setUserData(fullUserData);
+      // The bootstrap endpoint already upserted and returned the DB user record.
+      // Use it directly to skip a redundant Supabase lookup when available.
+      const sessionData = auth.sessionData;
+      if (sessionData?.id) {
+        const fullUserData = await userApi.getUserWithData(sessionData.id);
+        setUser(sessionData as unknown as User);
+        setUserData(fullUserData);
+      } else {
+        // Fallback: two-step lookup (standalone / old flow)
+        const backendUser = await userApi.getUserBySluggerId(sluggerUser.id);
+        const fullUserData = await userApi.getUserWithData(backendUser.id);
+        setUser(backendUser);
+        setUserData(fullUserData);
+      }
     } catch (error) {
       console.error('Failed to load user from SLUGGER:', error);
-      // Don't clear loading state - let user see error
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { issuesApi, Issue } from '../services/api';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -25,81 +27,9 @@ type TeamContextFilter = 'all' | 'home' | 'away';
 type ReportStatusFilter = 'all' | 'New' | 'In Progress' | 'Resolved';
 type ReportStatus = 'New' | 'In Progress' | 'Resolved';
 
-interface PlayerReport {
-  id: string;
-  submittedAt: string;
-  playerName: string;
-  teamContext: 'home' | 'away';
-  description: string;
+interface DisplayIssue extends Issue {
   status: ReportStatus;
 }
-
-const initialReports: PlayerReport[] = [
-  {
-    id: 'r1',
-    submittedAt: '2026-02-10T08:15:00Z',
-    playerName: 'Test Player',
-    teamContext: 'home',
-    description: 'Clubhouse shower in locker row B has no hot water after practice.',
-    status: 'New',
-  },
-  {
-    id: 'r2',
-    submittedAt: '2026-02-10T12:40:00Z',
-    playerName: 'John Smith',
-    teamContext: 'away',
-    description: 'Only two clean towels were left in my locker before team stretch.',
-    status: 'In Progress',
-  },
-  {
-    id: 'r3',
-    submittedAt: '2026-02-11T15:05:00Z',
-    playerName: 'Marcus Lee',
-    teamContext: 'home',
-    description: 'Pre-game meal did not include the gluten-free option listed in preferences.',
-    status: 'New',
-  },
-  {
-    id: 'r4',
-    submittedAt: '2026-02-11T17:20:00Z',
-    playerName: 'David Chen',
-    teamContext: 'away',
-    description: 'Bus snack cooler was missing hydration packets during travel.',
-    status: 'Resolved',
-  },
-  {
-    id: 'r5',
-    submittedAt: '2026-02-12T07:55:00Z',
-    playerName: 'Alex Rivera',
-    teamContext: 'home',
-    description: 'Training room ice machine ran out before morning recovery block.',
-    status: 'In Progress',
-  },
-  {
-    id: 'r6',
-    submittedAt: '2026-02-12T10:30:00Z',
-    playerName: 'Chris Johnson',
-    teamContext: 'away',
-    description: 'Requested dairy-free breakfast option was not available today.',
-    status: 'New',
-  },
-  {
-    id: 'r7',
-    submittedAt: '2026-02-12T13:10:00Z',
-    playerName: 'Samuel Wright',
-    teamContext: 'home',
-    description: 'Batting gloves drying rack is broken and not rotating air.',
-    status: 'Resolved',
-  },
-  {
-    id: 'r8',
-    submittedAt: '2026-02-12T16:45:00Z',
-    playerName: 'Ethan Brooks',
-    teamContext: 'away',
-    description: 'Need clearer labeling for nut-free post-game snacks in the clubhouse.',
-    status: 'New',
-  },
-];
 
 const formatTimestamp = (isoString: string) => {
   const date = new Date(isoString);
@@ -123,29 +53,61 @@ const getStatusBadgeClass = (status: ReportStatus) => {
 };
 
 export function ManagerPlayerReports() {
-  const [reports, setReports] = useState<PlayerReport[]>(initialReports);
+  const { user } = useAuth();
+  const [issues, setIssues] = useState<DisplayIssue[]>([]);
+  const [loadingIssues, setLoadingIssues] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [teamFilter, setTeamFilter] = useState<TeamContextFilter>('all');
   const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('all');
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
   const [statusUpdateMessage, setStatusUpdateMessage] = useState('');
 
-  const selectedReport = reports.find((report) => report.id === selectedReportId) ?? null;
+  useEffect(() => {
+    const fetchIssues = async () => {
+      try {
+        const data = await issuesApi.getAllIssues();
+        setIssues(data.map((issue) => ({ ...issue, status: 'New' as ReportStatus })));
+      } catch (err) {
+        setFetchError('Failed to load reports. Please try again.');
+        console.error('Failed to fetch issues:', err);
+      } finally {
+        setLoadingIssues(false);
+      }
+    };
+    fetchIssues();
+  }, []);
 
-  const filteredReports = useMemo(() => {
-    return reports.filter((report) => {
-      const matchesTeam = teamFilter === 'all' ? true : report.teamContext === teamFilter;
-      const matchesStatus = statusFilter === 'all' ? true : report.status === statusFilter;
+  const managerTeam = user?.team_name ?? null;
+
+  // Filter to only issues that belong to this manager's team:
+  // - home issues: player's team matches the manager's team
+  // - away issues: the selected away team matches the manager's team
+  const teamScopedIssues = useMemo(() => {
+    if (!managerTeam) return issues;
+    return issues.filter((issue) => {
+      if (issue.team_context === 'home') return issue.player_team === managerTeam;
+      if (issue.team_context === 'away') return issue.away_team === managerTeam;
+      return false;
+    });
+  }, [issues, managerTeam]);
+
+  const filteredIssues = useMemo(() => {
+    return teamScopedIssues.filter((issue) => {
+      const matchesTeam = teamFilter === 'all' ? true : issue.team_context === teamFilter;
+      const matchesStatus = statusFilter === 'all' ? true : issue.status === statusFilter;
       return matchesTeam && matchesStatus;
     });
-  }, [reports, teamFilter, statusFilter]);
+  }, [teamScopedIssues, teamFilter, statusFilter]);
 
-  const handleStatusUpdate = (reportId: string, nextStatus: ReportStatus) => {
-    // TODO: send report status updates to Postgres via AWS API.
-    setReports((prev) =>
-      prev.map((report) => (report.id === reportId ? { ...report, status: nextStatus } : report)),
+  const selectedIssue = issues.find((issue) => issue.id === selectedIssueId) ?? null;
+
+  const handleStatusUpdate = (issueId: number, nextStatus: ReportStatus) => {
+    // TODO: persist status updates to Supabase
+    setIssues((prev) =>
+      prev.map((issue) => (issue.id === issueId ? { ...issue, status: nextStatus } : issue)),
     );
     setStatusUpdateMessage(`Status updated to ${nextStatus}.`);
-    setSelectedReportId(null);
+    setSelectedIssueId(null);
   };
 
   return (
@@ -164,10 +126,12 @@ export function ManagerPlayerReports() {
         </CardHeader>
         <CardContent className="space-y-4">
           {statusUpdateMessage && <p className="text-sm text-muted-foreground">{statusUpdateMessage}</p>}
+          {fetchError && <p className="text-sm text-destructive">{fetchError}</p>}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="team-filter">Team Context</Label>
-              <Select value={teamFilter} onValueChange={(value) => setTeamFilter(value as TeamContextFilter)}>
+              <Select value={teamFilter} onValueChange={(value: string) => setTeamFilter(value as TeamContextFilter)}>
                 <SelectTrigger id="team-filter">
                   <SelectValue placeholder="Filter by team context" />
                 </SelectTrigger>
@@ -181,7 +145,7 @@ export function ManagerPlayerReports() {
 
             <div className="space-y-2">
               <Label htmlFor="status-filter">Status</Label>
-              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ReportStatusFilter)}>
+              <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value as ReportStatusFilter)}>
                 <SelectTrigger id="status-filter">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -195,60 +159,75 @@ export function ManagerPlayerReports() {
             </div>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Submitted</TableHead>
-                <TableHead>Player</TableHead>
-                <TableHead>Team Context</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredReports.map((report) => (
-                <TableRow key={report.id}>
-                  <TableCell>{formatTimestamp(report.submittedAt)}</TableCell>
-                  <TableCell>{report.playerName}</TableCell>
-                  <TableCell className="capitalize">{report.teamContext}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={getStatusBadgeClass(report.status)}>
-                      {report.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{report.description}</TableCell>
-                  <TableCell>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setSelectedReportId(report.id)}>
-                      View
-                    </Button>
-                  </TableCell>
+          {loadingIssues ? (
+            <p className="text-sm text-muted-foreground">Loading reports...</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead>Team</TableHead>
+                  <TableHead>Team Context</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredIssues.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                      No reports found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredIssues.map((issue) => (
+                    <TableRow key={issue.id}>
+                      <TableCell>{formatTimestamp(issue.created_at)}</TableCell>
+                      <TableCell>{issue.player_team ?? '—'}</TableCell>
+                      <TableCell className="capitalize">{issue.team_context}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getStatusBadgeClass(issue.status)}>
+                          {issue.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{issue.description}</TableCell>
+                      <TableCell>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setSelectedIssueId(issue.id)}>
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      <Dialog open={selectedReport !== null} onOpenChange={(open) => !open && setSelectedReportId(null)}>
+      <Dialog open={selectedIssue !== null} onOpenChange={(open: boolean) => !open && setSelectedIssueId(null)}>
         <DialogContent>
-          {selectedReport && (
+          {selectedIssue && (
             <>
               <DialogHeader>
-                <DialogTitle>{selectedReport.playerName}</DialogTitle>
+                <DialogTitle>{selectedIssue.player_team ?? 'Unknown Team'}</DialogTitle>
                 <DialogDescription>
-                  Submitted {formatTimestamp(selectedReport.submittedAt)} | {selectedReport.teamContext} context
+                  Submitted {formatTimestamp(selectedIssue.created_at)} | {selectedIssue.team_context} context
+                  {selectedIssue.team_context === 'away' && selectedIssue.away_team
+                    ? ` — ${selectedIssue.away_team}`
+                    : ''}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-3">
                 <div>
                   <Label>Status</Label>
-                  <p className="text-sm text-muted-foreground">{selectedReport.status}</p>
+                  <p className="text-sm text-muted-foreground">{selectedIssue.status}</p>
                 </div>
                 <div>
                   <Label>Description</Label>
-                  <p className="text-sm text-muted-foreground">{selectedReport.description}</p>
+                  <p className="text-sm text-muted-foreground">{selectedIssue.description}</p>
                 </div>
               </div>
 
@@ -256,11 +235,11 @@ export function ManagerPlayerReports() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleStatusUpdate(selectedReport.id, 'In Progress')}
+                  onClick={() => handleStatusUpdate(selectedIssue.id, 'In Progress')}
                 >
                   Mark In Progress
                 </Button>
-                <Button type="button" onClick={() => handleStatusUpdate(selectedReport.id, 'Resolved')}>
+                <Button type="button" onClick={() => handleStatusUpdate(selectedIssue.id, 'Resolved')}>
                   Mark as Resolved
                 </Button>
               </DialogFooter>

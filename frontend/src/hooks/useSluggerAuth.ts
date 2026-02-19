@@ -24,9 +24,6 @@ export function useSluggerAuth(widgetId: string) {
           setError(err);
           setLoading(false);
         },
-        onTokenRefresh: (auth) => {
-          setAuth(auth);
-        }
       });
     }
 
