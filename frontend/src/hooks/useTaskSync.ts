@@ -1,35 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { User as BackendUser, UserWithData } from '../services/api';
-import type { Task } from '../App';
-import type { RecurringTask } from '../components/RecurringTasks';
-
-// Maps DB enum values (both spaced and underscored formats) to frontend Task categories
-const DB_TO_TASK_CATEGORY: Record<string, Task['category']> = {
-  'medical & safety': 'sanitation',
-  'medical_safety': 'sanitation',
-  'equipment & field support': 'maintenance',
-  'equipment_field_support': 'maintenance',
-  'laundry & cleaning': 'laundry',
-  'laundry_cleaning': 'laundry',
-  'hygiene & personal care': 'sanitation',
-  'hygiene_personal_care': 'sanitation',
-  'meals & nutrition': 'food',
-  'meals_nutrition': 'food',
-  'misc': 'administration',
-  'miscellaneous': 'administration',
-};
-
-export function dbCategoryToFrontend(dbCategory: string | null): Task['category'] {
-  if (!dbCategory) return 'sanitation';
-  return DB_TO_TASK_CATEGORY[String(dbCategory).trim().toLowerCase()] ?? 'sanitation';
-}
-
-function convertTimeTo12Hour(time24: string): string {
-  const [hours, minutes] = time24.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const hours12 = hours % 12 || 12;
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
-}
+import type { Task } from '../types/index';
+import type { RecurringTask } from '../types/index';
+import { dbCategoryToFrontend } from '../utils/categoryMappings';
+import { convertTimeTo12Hour } from '../utils/timeFormat';
 
 export function useTaskSync(backendUser: BackendUser | null, userData: UserWithData | null) {
   const [tasks, setTasks] = useState<Task[]>([]);

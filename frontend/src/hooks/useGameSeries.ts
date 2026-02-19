@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { gamesApi, teamsApi } from '../services/api';
 import type { Game } from '../services/api';
-import type { GameSeries } from '../components/GameSchedule';
+import type { GameSeries } from '../types/index';
 
 function groupGamesIntoSeries(games: Game[]): GameSeries[] {
   const seriesMap = new Map<string, GameSeries>();

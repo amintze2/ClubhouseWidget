@@ -65,8 +65,9 @@
       port: 3000,
       open: true,
       headers: {
-        // Allow iframe embedding for development
-        'X-Frame-Options': 'SAMEORIGIN',
+        // Allow iframe embedding from Slugger shell in development.
+        // In production this is set via vercel.json response headers.
+        'Content-Security-Policy': "frame-ancestors 'self' http://localhost:3000 https://alpb-analytics.com https://www.alpb-analytics.com",
       },
     },
   });

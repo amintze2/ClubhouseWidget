@@ -3,26 +3,19 @@
 // - Uses game schedule to distinguish game days vs off days for filtering.
 // - Allows adding, toggling, and deleting tasks for specific dates.
 import React, { useState } from 'react';
-import type { MouseEvent, FormEvent } from 'react';
 import { WeeklyCalendar } from './WeeklyCalendar';
-import { TimeSelect } from './TimeSelect';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { Plus, Clock, User, Tag, Trash2, Calendar as CalendarIcon, Home, Plane } from 'lucide-react';
+import { Button } from './ui/button';
+import { ScrollArea } from './ui/scroll-area';
+import { Clock, User, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { formatTime12Hour } from '../utils/timeFormat';
-import { Task } from '../App';
-import { GameSeries } from './GameSchedule';
+import type { Task, GameSeries, TemplateTask, RecurringTask } from '../types/index';
 import { HomeGamesWidget } from './HomeGamesWidget';
-import { TemplateTask } from './TaskTemplates';
-import { RecurringTask } from './RecurringTasks';
+import { getCategoryBadgeColor as getCategoryColor } from '../utils/categoryHelpers';
+import { useCalendarData } from '../hooks/useCalendarData';
+import { CalendarDayTaskList } from './calendar/CalendarDayTaskList';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -42,12 +35,12 @@ interface CalendarViewProps {
   onToggleRecurringTask?: (date: string, taskId: string) => void;
 }
 
-export function CalendarView({ 
-  tasks, 
-  onAddTask, 
-  onToggleTask, 
-  onDeleteTask, 
-  gameSeries, 
+export function CalendarView({
+  tasks,
+  onAddTask,
+  onToggleTask,
+  onDeleteTask,
+  gameSeries,
   userTeam,
   nonGameDayTasks = [],
   nonGameDayTaskCompletions = {},
@@ -60,324 +53,29 @@ export function CalendarView({
   onToggleRecurringTask,
 }: CalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    time: '09:00',
-    category: 'maintenance' as Task['category'],
+  const {
+    isGameDay,
+    getGameType,
+    getGamesForDate,
+    getTasksForDate,
+    getRecurringTasksForDate,
+    getTemplateTasksForDate,
+    getTasksPerDay,
+    getGameTypesPerDay,
+  } = useCalendarData({
+    tasks, gameSeries, userTeam,
+    gameDayTasks, nonGameDayTasks,
+    recurringTasks, recurringTaskCompletions,
   });
-
-  const handleAddTask = (e?: MouseEvent | FormEvent) => {
-    // Prevent form submission and page refresh
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    if (newTask.title && newTask.time && selectedDate) {
-      onAddTask({
-        title: newTask.title,
-        description: newTask.description,
-        date: selectedDate,
-        time: newTask.time,
-        category: newTask.category,
-        completed: false,
-        assignedTo: '',
-      });
-      setNewTask({
-        title: '',
-        description: '',
-        time: '09:00',
-        category: 'maintenance',
-      });
-      setIsDialogOpen(false);
-    }
-  };
-
-  const isGameDay = (date: Date) => {
-    if (!gameSeries || !userTeam) return false;
-    
-    // Normalize the date to midnight for comparison
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    const normalizedTime = normalizedDate.getTime();
-    
-    return gameSeries.some(series => {
-      if (series.homeTeam !== userTeam && series.visitingTeam !== userTeam) return false;
-      return series.games.some(game => {
-        const gameDate = new Date(game.date);
-        gameDate.setHours(0, 0, 0, 0);
-        return gameDate.getTime() === normalizedTime;
-      });
-    });
-  };
-
-  const getGameType = (date: Date): 'home' | 'away' | 'both' | null => {
-    if (!gameSeries || !userTeam) return null;
-    
-    // Normalize the date to midnight for comparison
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    const normalizedTime = normalizedDate.getTime();
-    
-    let hasHomeGame = false;
-    let hasAwayGame = false;
-    
-    gameSeries.forEach(series => {
-      series.games.forEach(game => {
-        const gameDate = new Date(game.date);
-        gameDate.setHours(0, 0, 0, 0);
-        if (gameDate.getTime() === normalizedTime) {
-          if (series.homeTeam === userTeam) {
-            hasHomeGame = true;
-          } else if (series.visitingTeam === userTeam) {
-            hasAwayGame = true;
-          }
-        }
-      });
-    });
-    
-    if (hasHomeGame && hasAwayGame) return 'both';
-    if (hasHomeGame) return 'home';
-    if (hasAwayGame) return 'away';
-    return null;
-  };
-
-  const getGamesForDate = (date: Date | undefined): Array<{ homeTeam: string; visitingTeam: string; time?: string; gameNumber: number }> => {
-    if (!date || !gameSeries || !userTeam) return [];
-    
-    // Normalize the selected date to midnight for comparison
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    const normalizedTime = normalizedDate.getTime();
-    
-    const games: Array<{ homeTeam: string; visitingTeam: string; time?: string; gameNumber: number }> = [];
-    
-    gameSeries.forEach(series => {
-      series.games.forEach(game => {
-        // Normalize game date to midnight for comparison
-        const gameDate = new Date(game.date);
-        gameDate.setHours(0, 0, 0, 0);
-        
-        if (gameDate.getTime() === normalizedTime) {
-          // Only include games where the user's team is involved
-          if (series.homeTeam === userTeam || series.visitingTeam === userTeam) {
-            games.push({
-              homeTeam: series.homeTeam,
-              visitingTeam: series.visitingTeam,
-              time: game.time,
-              gameNumber: game.gameNumber,
-            });
-          }
-        }
-      });
-    });
-    
-    return games;
-  };
-
-  const getTasksForDate = (date: Date | undefined) => {
-    if (!date) return [];
-    
-    // Check if this date is a game day
-    const isGame = isGameDay(date);
-    
-    // Normalize the selected date to midnight for comparison
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    const normalizedTime = normalizedDate.getTime();
-    
-    const filteredTasks = tasks.filter(task => {
-      // Ensure task.date is a valid Date object
-      if (!(task.date instanceof Date) || isNaN(task.date.getTime())) {
-        return false;
-      }
-      
-      // Normalize task date to midnight for comparison
-      const taskDate = new Date(task.date);
-      taskDate.setHours(0, 0, 0, 0);
-      const taskTime = taskDate.getTime();
-      
-      const matches = taskTime === normalizedTime;
-      if (!matches) return false;
-      
-      // Filter by task_type:
-      // task_type = 1: only show on game days
-      // task_type = 2: only show on off days
-      // task_type = null/undefined: show on all days (backward compatibility)
-      if (task.taskType === 1) {
-        return isGame;
-      }
-      if (task.taskType === 2) {
-        return !isGame;
-      }
-      
-      // task_type is null or undefined - show on all days
-      return true;
-    }).sort((a, b) => a.time.localeCompare(b.time));
-    
-    return filteredTasks;
-  };
-
-  const getRecurringTasksForDate = (date: Date | undefined): Task[] => {
-    if (!date) return [];
-    
-    const isGame = isGameDay(date);
-    const dateStr = date.toISOString().split('T')[0];
-    
-    // Filter for enabled recurring tasks based on day type
-    const relevantRecurringTasks = recurringTasks.filter(task => {
-      if (!task.enabled) return false;
-      if (isGame && task.taskType === 'game-day') return true;
-      if (!isGame && task.taskType === 'off-day') return true;
-      return false;
-    });
-    
-    // Convert recurring tasks to Task format for display
-    return relevantRecurringTasks.map(recurringTask => {
-      // Convert 12-hour time to 24-hour format for sorting
-      const [time, period] = recurringTask.time.split(' ');
-      const [hours, minutes] = time.split(':').map(Number);
-      let hours24 = hours;
-      if (period?.toUpperCase() === 'PM' && hours !== 12) {
-        hours24 = hours + 12;
-      } else if (period?.toUpperCase() === 'AM' && hours === 12) {
-        hours24 = 0;
-      }
-      const time24 = `${hours24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      
-      return {
-        id: `recurring-${recurringTask.id}-${dateStr}`,
-        title: recurringTask.title,
-        description: recurringTask.description,
-        date: date,
-        time: time24,
-        category: recurringTask.category,
-        completed: recurringTaskCompletions[dateStr]?.[recurringTask.id] || false,
-        assignedTo: '',
-      };
-    }).sort((a, b) => a.time.localeCompare(b.time));
-  };
-
-  const getTemplateTasksForDate = (date: Date | undefined) => {
-    if (!date) return [];
-    
-    if (isGameDay(date)) {
-      // Return game day template tasks for game days
-      return gameDayTasks;
-    } else {
-      // Return non-game day template tasks for non-game days
-      return nonGameDayTasks;
-    }
-  };
-
-  const getCategoryColor = (category: Task['category']) => {
-    switch (category) {
-      case 'sanitation':
-        return 'bg-blue-100 text-blue-800';
-      case 'laundry':
-        return 'bg-purple-100 text-purple-800';
-      case 'food':
-        return 'bg-orange-100 text-orange-800';
-      case 'communication':
-        return 'bg-green-100 text-green-800';
-      case 'maintenance':
-        return 'bg-amber-100 text-amber-800';
-      case 'administration':
-        return 'bg-slate-100 text-slate-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getCategoryLabel = (category: Task['category']) => {
-    switch (category) {
-      case 'sanitation':
-        return '🧼 Sanitation & Facilities';
-      case 'laundry':
-        return '🧺 Laundry & Uniforms';
-      case 'food':
-        return '🍽️ Food & Nutrition';
-      case 'communication':
-        return '💬 Communication & Coordination';
-      case 'maintenance':
-        return '🧰 Maintenance & Supplies';
-      case 'administration':
-        return '💵 Administration & Compliance';
-      default:
-        return category.charAt(0).toUpperCase() + category.slice(1);
-    }
-  };
-
-  const getTasksPerDay = () => {
-    const tasksMap = new Map<string, number>();
-    tasks.forEach(task => {
-      // Normalize task date to midnight for consistent grouping
-      const taskDate = new Date(task.date);
-      taskDate.setHours(0, 0, 0, 0);
-      const dateStr = taskDate.toDateString();
-      tasksMap.set(dateStr, (tasksMap.get(dateStr) || 0) + 1);
-    });
-    
-    // Add template tasks to the count
-    if (gameSeries && userTeam) {
-      // Get a range of dates to check (e.g., current month +/- 1 month)
-      const today = new Date();
-      const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-      
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const checkDate = new Date(d);
-        const dateStr = checkDate.toDateString();
-        
-        if (isGameDay(checkDate)) {
-          // Add game day template tasks
-          tasksMap.set(dateStr, (tasksMap.get(dateStr) || 0) + gameDayTasks.length);
-        } else if (nonGameDayTasks.length > 0) {
-          // Add non-game day template tasks
-          tasksMap.set(dateStr, (tasksMap.get(dateStr) || 0) + nonGameDayTasks.length);
-        }
-      }
-    }
-    
-    return tasksMap;
-  };
-
-  const getGameTypesPerDay = () => {
-    const gameTypesMap = new Map<string, 'home' | 'away' | 'both'>();
-    
-    if (!gameSeries || !userTeam) return gameTypesMap;
-    
-    // Get a range of dates to check
-    const today = new Date();
-    const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const checkDate = new Date(d);
-      const gameType = getGameType(checkDate);
-      if (gameType) {
-        gameTypesMap.set(checkDate.toDateString(), gameType);
-      }
-    }
-    
-    return gameTypesMap;
-  };
-
-  const selectedDateTasks = getTasksForDate(selectedDate);
-  const selectedDateTemplateTasks = getTemplateTasksForDate(selectedDate);
-  const selectedDateRecurringTasks = getRecurringTasksForDate(selectedDate);
 
   return (
     <div className="space-y-6">
       {gameSeries && userTeam && (
         <HomeGamesWidget gameSeries={gameSeries} teamName={userTeam} />
       )}
-      
+
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Calendar Card */}
         <Card>
           <CardHeader>
             <CardTitle>Weekly Task Calendar</CardTitle>
@@ -393,354 +91,24 @@ export function CalendarView({
           </CardContent>
         </Card>
 
-        {/* Tasks for Selected Date */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>
-                  {selectedDate ? selectedDate.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    month: 'long', 
-                    day: 'numeric',
-                    year: 'numeric'
-                  }) : 'Select a date'}
-                </CardTitle>
-                <CardDescription>
-                  {selectedDate && isGameDay(selectedDate) ? (
-                    <>{selectedDateTasks.length + selectedDateTemplateTasks.length + selectedDateRecurringTasks.length} {(selectedDateTasks.length + selectedDateTemplateTasks.length + selectedDateRecurringTasks.length) === 1 ? 'task' : 'tasks'} scheduled</>
-                  ) : (
-                    <>Off Day - {selectedDateTasks.length + selectedDateTemplateTasks.length + selectedDateRecurringTasks.length} {(selectedDateTasks.length + selectedDateTemplateTasks.length + selectedDateRecurringTasks.length) === 1 ? 'task' : 'tasks'} scheduled</>
-                  )}
-                </CardDescription>
-              </div>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Task
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Schedule a New Task</DialogTitle>
-                    <DialogDescription>
-                      Add a task for {selectedDate?.toLocaleDateString()}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="task-title">Task Title</Label>
-                      <Input
-                        id="task-title"
-                        placeholder="e.g., Clean locker room"
-                        value={newTask.title}
-                        onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                      />
-                    </div>
-                    <TimeSelect
-                      id="task-time"
-                      label="Time"
-                      value={newTask.time}
-                      onChange={(time) => setNewTask({ ...newTask, time })}
-                    />
-                    <div>
-                      <Label htmlFor="task-category">Category</Label>
-                      <Select
-                        value={newTask.category}
-                        onValueChange={(value: 'sanitation' | 'laundry' | 'food' | 'communication' | 'maintenance' | 'administration') => 
-                          setNewTask({ ...newTask, category: value })
-                        }
-                      >
-                        <SelectTrigger id="task-category">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sanitation">🧼 Sanitation & Facilities</SelectItem>
-                          <SelectItem value="laundry">🧺 Laundry & Uniforms</SelectItem>
-                          <SelectItem value="food">🍽️ Food & Nutrition</SelectItem>
-                          <SelectItem value="communication">💬 Communication & Coordination</SelectItem>
-                          <SelectItem value="maintenance">🧰 Maintenance & Supplies</SelectItem>
-                          <SelectItem value="administration">💵 Administration & Compliance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="task-description">Description</Label>
-                      <Textarea
-                        id="task-description"
-                        placeholder="Task details..."
-                        rows={3}
-                        value={newTask.description}
-                        onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                      />
-                    </div>
-                    <Button 
-                      type="button"
-                      onClick={handleAddTask} 
-                      className="w-full"
-                    >
-                      Add Task
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-4">
-                {/* Game details for game days - show even if no tasks */}
-                {selectedDate && (() => {
-                  const games = getGamesForDate(selectedDate);
-                  const gameType = getGameType(selectedDate);
-                  const isGame = isGameDay(selectedDate);
-                  return isGame && games.length > 0 ? (
-                      <Card className={`${
-                        gameType === 'home' ? 'bg-green-50 border-green-200' :
-                        gameType === 'away' ? 'bg-orange-50 border-orange-200' :
-                        'bg-purple-50 border-purple-200'
-                      }`}>
-                        <CardContent className="pt-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge className={
-                                gameType === 'home' ? 'bg-green-600 text-white' :
-                                gameType === 'away' ? 'bg-orange-600 text-white' :
-                                'bg-purple-600 text-white'
-                              }>
-                                {gameType === 'home' ? '🏠 Home Game' : gameType === 'away' ? '✈️ Away Game' : '🏠✈️ Games'}
-                              </Badge>
-                            </div>
-                            {games.map((game, idx) => (
-                              <div key={idx} className="text-sm">
-                                <div className="font-medium">
-                                  {game.homeTeam} vs {game.visitingTeam}
-                                </div>
-                                {game.time && (
-                                  <div className="text-gray-600 flex items-center gap-1 mt-1">
-                                    <Clock className="h-3 w-3" />
-                                    {game.time}
-                                  </div>
-                                )}
-                                {game.gameNumber > 1 && (
-                                  <div className="text-gray-500 text-xs mt-1">
-                                    Game {game.gameNumber} of series
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : null;
-                  })()}
-                
-                {/* Show empty state only if no tasks and no games */}
-                {selectedDateTasks.length === 0 && selectedDateTemplateTasks.length === 0 && selectedDateRecurringTasks.length === 0 && (!selectedDate || !isGameDay(selectedDate) || getGamesForDate(selectedDate).length === 0) ? (
-                  <div className="flex flex-col items-center justify-center h-[300px] text-center text-gray-500">
-                    <CalendarIcon className="h-12 w-12 mb-4 text-gray-300" />
-                    <p>No tasks scheduled for this day</p>
-                    <p className="text-sm mt-2">Click "Add Task" to create one</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Template tasks (either game day or non-game day) */}
-                    {selectedDateTemplateTasks.map((task) => {
-                    const isGameDayTask = 'timePeriod' in task;
-                    const selectedDateStr = selectedDate?.toISOString().split('T')[0] || '';
-                    const isCompleted = isGameDayTask 
-                      ? gameDayTaskCompletions[selectedDateStr]?.[task.id] || false
-                      : nonGameDayTaskCompletions[task.id] || false;
-                    
-                    const bgColor = isGameDayTask 
-                      ? (task.timePeriod === 'morning' ? 'bg-orange-50 border-orange-200' :
-                         task.timePeriod === 'pre-game' ? 'bg-yellow-50 border-yellow-200' :
-                         'bg-green-50 border-green-200')
-                      : 'bg-blue-50 border-blue-200';
-                    
-                    const badgeLabel = isGameDayTask
-                      ? (task.timePeriod === 'morning' ? 'Morning' :
-                         task.timePeriod === 'pre-game' ? 'Pre-Game' :
-                         'Post-Game')
-                      : 'Daily Task';
-                    
-                    return (
-                      <Card key={`template-${task.id}`} className={`shadow-sm ${bgColor}`}>
-                        <CardContent className="pt-6">
-                          <div className="space-y-3">
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-3 flex-1">
-                                <Checkbox
-                                  id={`template-task-${task.id}`}
-                                  checked={isCompleted}
-                                  onCheckedChange={() => {
-                                    if (isGameDayTask) {
-                                      onToggleGameDayTask?.(selectedDateStr, task.id);
-                                    } else {
-                                      onToggleNonGameDayTask?.(task.id);
-                                    }
-                                  }}
-                                  className="mt-1"
-                                />
-                                <div className="flex-1">
-                                  <label
-                                    htmlFor={`template-task-${task.id}`}
-                                    className={`block cursor-pointer ${isCompleted ? 'line-through text-gray-400' : ''}`}
-                                  >
-                                    <h3 className="font-medium mb-1">{task.title}</h3>
-                                    {task.description && (
-                                      <p className="text-sm text-gray-600">{task.description}</p>
-                                    )}
-                                  </label>
-                                </div>
-                              </div>
-                              <Badge variant="secondary" className={
-                                isGameDayTask 
-                                  ? (task.timePeriod === 'morning' ? 'bg-orange-200 text-orange-800' :
-                                     task.timePeriod === 'pre-game' ? 'bg-yellow-200 text-yellow-800' :
-                                     'bg-green-200 text-green-800')
-                                  : 'bg-blue-200 text-blue-800'
-                              }>
-                                {badgeLabel}
-                              </Badge>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <Badge className={getCategoryColor(task.category)}>
-                                {getCategoryLabel(task.category)}
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-
-                    {/* Recurring tasks for game days */}
-                    {selectedDateRecurringTasks.map((task) => {
-                      const dateStr = selectedDate?.toISOString().split('T')[0] || '';
-                      const recurringTaskId = task.id.split('-')[1]; // Extract the recurring task ID
-                      const isCompleted = recurringTaskCompletions[dateStr]?.[recurringTaskId] || false;
-                      
-                      return (
-                        <Card key={task.id} className="shadow-sm bg-blue-50 border-blue-200">
-                          <CardContent className="pt-6">
-                            <div className="space-y-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-start gap-3 flex-1">
-                                  <Checkbox
-                                    id={`recurring-task-${task.id}`}
-                                    checked={isCompleted}
-                                    onCheckedChange={() => {
-                                      if (onToggleRecurringTask && dateStr) {
-                                        onToggleRecurringTask(dateStr, recurringTaskId);
-                                      }
-                                    }}
-                                    className="mt-1"
-                                  />
-                                  <div className="flex-1">
-                                    <label
-                                      htmlFor={`recurring-task-${task.id}`}
-                                      className={`block cursor-pointer ${isCompleted ? 'line-through text-gray-400' : ''}`}
-                                    >
-                                      <h3 className="font-medium mb-1">{task.title}</h3>
-                                      {task.description && (
-                                        <p className="text-sm text-gray-600">{task.description}</p>
-                                      )}
-                                    </label>
-                                  </div>
-                                </div>
-                                <Badge variant="secondary" className="bg-blue-200 text-blue-800">
-                                  Recurring
-                                </Badge>
-                              </div>
-
-                              <div className="flex flex-wrap gap-2">
-                                <Badge variant="secondary" className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {formatTime12Hour(task.time)}
-                                </Badge>
-                                <Badge className={getCategoryColor(task.category)}>
-                                  {getCategoryLabel(task.category)}
-                                </Badge>
-                                {isCompleted && (
-                                  <Badge variant="secondary" className="bg-green-100 text-green-800">
-                                    Completed
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-
-                    {/* Custom scheduled tasks */}
-                    {selectedDateTasks.map((task) => (
-                    <Card key={task.id} className="shadow-sm">
-                      <CardContent className="pt-6">
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3 flex-1">
-                              <Checkbox
-                                id={`task-${task.id}`}
-                                checked={task.completed}
-                                onCheckedChange={() => onToggleTask(task.id)}
-                                className="mt-1"
-                              />
-                              <div className="flex-1">
-                                <label
-                                  htmlFor={`task-${task.id}`}
-                                  className={`block cursor-pointer ${task.completed ? 'line-through text-gray-400' : ''}`}
-                                >
-                                  <h3 className="font-medium mb-1">{task.title}</h3>
-                                  {task.description && (
-                                    <p className="text-sm text-gray-600">{task.description}</p>
-                                  )}
-                                </label>
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDeleteTask(task.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatTime12Hour(task.time)}
-                            </Badge>
-                            <Badge className={getCategoryColor(task.category)}>
-                              {getCategoryLabel(task.category)}
-                            </Badge>
-                            {task.assignedTo && (
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                {task.assignedTo}
-                              </Badge>
-                            )}
-                            {task.completed && (
-                              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                                Completed
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  </>
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+        <CalendarDayTaskList
+          selectedDate={selectedDate}
+          onAddTask={onAddTask}
+          isGameDayFn={isGameDay}
+          getGameTypeFn={getGameType}
+          getGamesForDateFn={getGamesForDate}
+          selectedDateTasks={getTasksForDate(selectedDate)}
+          selectedDateTemplateTasks={getTemplateTasksForDate(selectedDate)}
+          selectedDateRecurringTasks={getRecurringTasksForDate(selectedDate)}
+          gameDayTaskCompletions={gameDayTaskCompletions}
+          nonGameDayTaskCompletions={nonGameDayTaskCompletions}
+          recurringTaskCompletions={recurringTaskCompletions}
+          onToggleTask={onToggleTask}
+          onDeleteTask={onDeleteTask}
+          onToggleGameDayTask={onToggleGameDayTask}
+          onToggleNonGameDayTask={onToggleNonGameDayTask}
+          onToggleRecurringTask={onToggleRecurringTask}
+        />
       </div>
 
       {/* All Upcoming Tasks */}
@@ -768,11 +136,8 @@ export function CalendarView({
                     <div className="flex items-center gap-3 flex-1">
                       <Checkbox
                         checked={task.completed}
-                        onCheckedChange={(e) => {
-                          e.stopPropagation();
-                          onToggleTask(task.id);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={() => onToggleTask(task.id)}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -783,9 +148,7 @@ export function CalendarView({
                             {task.category}
                           </Badge>
                           {task.completed && (
-                            <Badge variant="secondary" className="bg-green-100 text-green-800" size="sm">
-                              Done
-                            </Badge>
+                            <Badge variant="secondary" className="bg-green-100 text-green-800" size="sm">Done</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -799,8 +162,7 @@ export function CalendarView({
                           </span>
                           {task.assignedTo && (
                             <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {task.assignedTo}
+                              <User className="h-3 w-3" />{task.assignedTo}
                             </span>
                           )}
                         </div>
@@ -809,10 +171,7 @@ export function CalendarView({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteTask(task.id);
-                      }}
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDeleteTask(task.id); }}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />

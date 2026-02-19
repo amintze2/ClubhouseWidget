@@ -1,22 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { UserWithData, Inventory } from '../services/api';
-import type { InventoryItem } from '../components/ClubhouseInventory';
-
-// Maps DB enum values to inventory category keys
-const DB_TO_INVENTORY_CATEGORY: Record<string, string> = {
-  'medical & safety': 'medical',
-  'medical_safety': 'medical',
-  'equipment & field support': 'equipment',
-  'equipment_field_support': 'equipment',
-  'laundry & cleaning': 'laundry',
-  'laundry_cleaning': 'laundry',
-  'hygiene & personal care': 'hygiene',
-  'hygiene_personal_care': 'hygiene',
-  'meals & nutrition': 'food',
-  'meals_nutrition': 'food',
-  'misc': 'miscellaneous',
-  'miscellaneous': 'miscellaneous',
-};
+import type { InventoryItem } from '../types/index';
+import { DB_TO_INVENTORY_CATEGORY } from '../utils/categoryMappings';
 
 const EMPTY_GROUPED: Record<string, InventoryItem[]> = {
   laundry: [],

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Plus, Trash2 } from 'lucide-react';
+import { getCategoryBadgeColor, getCategoryLabel } from '../utils/categoryHelpers';
 
 export interface TemplateTask {
   id: string;
@@ -57,40 +58,6 @@ export function TaskTemplates({
       category: 'sanitation',
     });
     setOpenDialog(false);
-  };
-
-  const getCategoryBadgeColor = (category: 'sanitation' | 'laundry' | 'food' | 'communication' | 'maintenance' | 'administration') => {
-    switch (category) {
-      case 'sanitation':
-        return 'bg-blue-100 text-blue-800';
-      case 'laundry':
-        return 'bg-purple-100 text-purple-800';
-      case 'food':
-        return 'bg-orange-100 text-orange-800';
-      case 'communication':
-        return 'bg-green-100 text-green-800';
-      case 'maintenance':
-        return 'bg-amber-100 text-amber-800';
-      case 'administration':
-        return 'bg-slate-100 text-slate-800';
-    }
-  };
-
-  const getCategoryLabel = (category: 'sanitation' | 'laundry' | 'food' | 'communication' | 'maintenance' | 'administration') => {
-    switch (category) {
-      case 'sanitation':
-        return '🧼 Sanitation & Facilities';
-      case 'laundry':
-        return '🧺 Laundry & Uniforms';
-      case 'food':
-        return '🍽️ Food & Nutrition';
-      case 'communication':
-        return '💬 Communication & Coordination';
-      case 'maintenance':
-        return '🧰 Maintenance & Supplies';
-      case 'administration':
-        return '💵 Administration & Compliance';
-    }
   };
 
   const renderTaskList = (tasks: TemplateTask[], onDelete: (id: string) => void, emptyMessage: string) => {
