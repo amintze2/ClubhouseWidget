@@ -1,4 +1,5 @@
 import { FormEvent, KeyboardEvent, useMemo, useState } from 'react';
+import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Badge } from './ui/badge';
@@ -23,6 +24,31 @@ const DIETARY_ITEM_OPTIONS = [
   'Kosher',
   'Other',
 ] as const;
+
+interface SelectedItemChipProps {
+  item: string;
+  onRemove: (item: string) => void;
+}
+
+function SelectedItemChip({ item, onRemove }: SelectedItemChipProps) {
+  return (
+    <div className="relative inline-flex items-center rounded-full bg-muted px-4 py-2 text-sm overflow-visible">
+      <span className="whitespace-nowrap">{item}</span>
+
+      <button
+        type="button"
+        aria-label={`Remove ${item}`}
+        className="absolute top-1 right-0 translate-x-1/2 -translate-y-1/2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600"
+        onClick={(event) => {
+          event.stopPropagation();
+          onRemove(item);
+        }}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
 
 export function PlayerInfo() {
   const { user } = useAuth();
@@ -195,17 +221,7 @@ export function PlayerInfo() {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {selectedDietaryItems.map((item) => (
-                    <div key={item} className="flex items-center gap-1">
-                      <Badge variant="secondary">{item}</Badge>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveItem(item)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
+                    <SelectedItemChip key={item} item={item} onRemove={handleRemoveItem} />
                   ))}
                 </div>
               )}

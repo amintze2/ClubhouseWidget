@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { issuesApi, Issue } from '../services/api';
+import { issuesApi } from '../services/api';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -22,34 +22,49 @@ import {
   TableHeader,
   TableRow,
 } from './ui/table';
+import { ReportDetails } from './reports/ReportDetails';
+import { ReportTableRowDescription } from './reports/ReportTableRowDescription';
+import { buildInitials, formatReportTimestamp, getStatusBadgeClass } from './reports/reportUtils';
+import type {
+  DisplayIssue,
+  ReportComment,
+  ReportStatus,
+  ReportStatusFilter,
+  TeamContextFilter,
+} from './reports/types';
 
-type TeamContextFilter = 'all' | 'home' | 'away';
-type ReportStatusFilter = 'all' | 'New' | 'In Progress' | 'Resolved';
-type ReportStatus = 'New' | 'In Progress' | 'Resolved';
-
-interface DisplayIssue extends Issue {
-  status: ReportStatus;
-}
-
-const formatTimestamp = (isoString: string) => {
-  const date = new Date(isoString);
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-};
-
-const getStatusBadgeClass = (status: ReportStatus) => {
-  if (status === 'New') {
-    return 'border-red-200 bg-red-100 text-red-800';
-  }
-  if (status === 'In Progress') {
-    return 'border-amber-200 bg-amber-100 text-amber-800';
-  }
-  return 'border-green-200 bg-green-100 text-green-800';
+const INITIAL_COMMENTS: Record<string, ReportComment[]> = {
+  '1': [
+    {
+      id: 'c1',
+      reportId: '1',
+      authorRole: 'clubhouse_manager',
+      authorName: 'Test CM',
+      authorInitials: 'TC',
+      body: 'I have notified maintenance. They should check this after batting practice.',
+      createdAt: '2026-02-24T14:15:00Z',
+    },
+    {
+      id: 'c2',
+      reportId: '1',
+      authorRole: 'clubhouse_manager',
+      authorName: 'Maintenance',
+      authorInitials: 'M',
+      body: 'On site now. We are inspecting the hot water line and boiler settings.',
+      createdAt: '2026-02-24T15:05:00Z',
+    },
+  ],
+  '2': [
+    {
+      id: 'c3',
+      reportId: '2',
+      authorRole: 'clubhouse_manager',
+      authorName: 'Clubhouse Manager',
+      authorInitials: 'CM',
+      body: 'Laundry was restocked. Please confirm next time you are back in the clubhouse.',
+      createdAt: '2026-02-24T16:10:00Z',
+    },
+  ],
 };
 
 export function ManagerPlayerReports() {
@@ -61,6 +76,7 @@ export function ManagerPlayerReports() {
   const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('all');
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
   const [statusUpdateMessage, setStatusUpdateMessage] = useState('');
+  const [commentsByReportId, setCommentsByReportId] = useState<Record<string, ReportComment[]>>(INITIAL_COMMENTS);
 
   useEffect(() => {
     const fetchIssues = async () => {
@@ -74,16 +90,15 @@ export function ManagerPlayerReports() {
         setLoadingIssues(false);
       }
     };
+
     fetchIssues();
   }, []);
 
   const managerTeam = user?.team_name ?? null;
 
-  // Filter to only issues that belong to this manager's team:
-  // - home issues: player's team matches the manager's team
-  // - away issues: the selected away team matches the manager's team
   const teamScopedIssues = useMemo(() => {
     if (!managerTeam) return issues;
+
     return issues.filter((issue) => {
       if (issue.team_context === 'home') return issue.player_team === managerTeam;
       if (issue.team_context === 'away') return issue.away_team === managerTeam;
@@ -100,6 +115,37 @@ export function ManagerPlayerReports() {
   }, [teamScopedIssues, teamFilter, statusFilter]);
 
   const selectedIssue = issues.find((issue) => issue.id === selectedIssueId) ?? null;
+
+  const openIssueDetails = (issueId: number) => {
+    setSelectedIssueId(issueId);
+  };
+
+  const getReportComments = (reportId: number) => commentsByReportId[reportId.toString()] ?? [];
+
+  const getLatestCommentPreview = (reportId: number) => {
+    const comments = getReportComments(reportId);
+    return comments.length > 0 ? comments[comments.length - 1] : null;
+  };
+
+  const handleAddComment = (reportId: string, body: string) => {
+    // TODO: persist comments to Supabase when manager report comments backend is available.
+    const authorName = user?.user_name || 'Clubhouse Manager';
+    const nextComment: ReportComment = {
+      id: `c-${Date.now()}`,
+      reportId,
+      authorRole: 'clubhouse_manager',
+      authorName,
+      authorInitials: buildInitials(authorName),
+      body,
+      createdAt: new Date().toISOString(),
+    };
+
+    setCommentsByReportId((prev) => ({
+      ...prev,
+      [reportId]: [...(prev[reportId] ?? []), nextComment],
+    }));
+    setStatusUpdateMessage('Comment added.');
+  };
 
   const handleStatusUpdate = (issueId: number, nextStatus: ReportStatus) => {
     // TODO: persist status updates to Supabase
@@ -162,15 +208,15 @@ export function ManagerPlayerReports() {
           {loadingIssues ? (
             <p className="text-sm text-muted-foreground">Loading reports...</p>
           ) : (
-            <Table>
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Team Context</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead className="w-[16%]">Submitted</TableHead>
+                  <TableHead className="w-[16%]">Team</TableHead>
+                  <TableHead className="w-[10%]">Team Context</TableHead>
+                  <TableHead className="w-[10%]">Status</TableHead>
+                  <TableHead className="w-[38%]">Description</TableHead>
+                  <TableHead className="w-[10%]">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -183,17 +229,23 @@ export function ManagerPlayerReports() {
                 ) : (
                   filteredIssues.map((issue) => (
                     <TableRow key={issue.id}>
-                      <TableCell>{formatTimestamp(issue.created_at)}</TableCell>
-                      <TableCell>{issue.player_team ?? '—'}</TableCell>
+                      <TableCell>{formatReportTimestamp(issue.created_at)}</TableCell>
+                      <TableCell>{issue.player_team ?? '-'}</TableCell>
                       <TableCell className="capitalize">{issue.team_context}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={getStatusBadgeClass(issue.status)}>
                           {issue.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{issue.description}</TableCell>
+                      <TableCell className="w-[38%]">
+                        <ReportTableRowDescription
+                          description={issue.description}
+                          latestComment={getLatestCommentPreview(issue.id)}
+                          onOpen={() => openIssueDetails(issue.id)}
+                        />
+                      </TableCell>
                       <TableCell>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setSelectedIssueId(issue.id)}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => openIssueDetails(issue.id)}>
                           View
                         </Button>
                       </TableCell>
@@ -207,29 +259,25 @@ export function ManagerPlayerReports() {
       </Card>
 
       <Dialog open={selectedIssue !== null} onOpenChange={(open: boolean) => !open && setSelectedIssueId(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
           {selectedIssue && (
             <>
               <DialogHeader>
-                <DialogTitle>{selectedIssue.player_team ?? 'Unknown Team'}</DialogTitle>
+                <DialogTitle>Report Details</DialogTitle>
                 <DialogDescription>
-                  Submitted {formatTimestamp(selectedIssue.created_at)} | {selectedIssue.team_context} context
+                  {selectedIssue.player_team ?? 'Unknown Team'}
                   {selectedIssue.team_context === 'away' && selectedIssue.away_team
-                    ? ` — ${selectedIssue.away_team}`
+                    ? ` | Away: ${selectedIssue.away_team}`
                     : ''}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-3">
-                <div>
-                  <Label>Status</Label>
-                  <p className="text-sm text-muted-foreground">{selectedIssue.status}</p>
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <p className="text-sm text-muted-foreground">{selectedIssue.description}</p>
-                </div>
-              </div>
+              <ReportDetails
+                report={selectedIssue}
+                comments={getReportComments(selectedIssue.id)}
+                onAddComment={handleAddComment}
+                onClose={() => setSelectedIssueId(null)}
+              />
 
               <DialogFooter>
                 <Button
