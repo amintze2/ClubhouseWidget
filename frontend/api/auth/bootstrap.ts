@@ -56,19 +56,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!sluggerRes.ok) {
       return res.status(401).json({ error: 'Bootstrap token rejected by Slugger' });
     }
-    sluggerUser = await sluggerRes.json();
+    const json = await sluggerRes.json();
+    // Slugger wraps user data under a 'data' key: { success: true, data: { id, firstName, ... } }
+    sluggerUser = json?.data ?? json;
   } catch {
     return res.status(502).json({ error: 'Failed to reach Slugger API' });
   }
 
-  // Slugger returns 'sub' (Cognito) or 'id' as the user identifier
-  const sluggerUserId: string = sluggerUser.sub ?? sluggerUser.id;
+  // Slugger returns numeric 'id' as the user identifier
+  const sluggerUserId: string = String(sluggerUser.id ?? '');
   if (!sluggerUserId) {
     return res.status(401).json({ error: 'No user ID in Slugger response' });
   }
 
   const userName: string =
-    [sluggerUser.given_name, sluggerUser.family_name].filter(Boolean).join(' ') ||
+    [sluggerUser.firstName, sluggerUser.lastName].filter(Boolean).join(' ') ||
     sluggerUser.email ||
     sluggerUserId;
 

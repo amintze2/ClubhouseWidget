@@ -155,10 +155,15 @@ export class SluggerWidgetSDK {
   }
 
   private sendReady(): void {
-    window.parent.postMessage(
-      { type: 'SLUGGER_WIDGET_READY', widgetId: this.options.widgetId },
-      '*'
-    );
+    // Only notify the parent when actually embedded in an iframe.
+    // If window.parent === window we are the top-level page (local dev) and
+    // posting to foreign origins would throw a cross-origin error.
+    if (window.parent === window) return;
+
+    const msg = { type: 'SLUGGER_WIDGET_READY', widgetId: this.options.widgetId };
+    this.options.allowedOrigins.forEach((origin) => {
+      window.parent.postMessage(msg, origin);
+    });
   }
 
   /** Wait for authentication to be ready */
