@@ -1,9 +1,18 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.games (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  home_team_id bigint NOT NULL,
+  away_team_id bigint NOT NULL,
+  date date,
+  time time without time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT games_pkey PRIMARY KEY (id),
+  CONSTRAINT games_home_team_id_fkey FOREIGN KEY (home_team_id) REFERENCES public.teams(id),
+  CONSTRAINT games_away_team_id_fkey FOREIGN KEY (away_team_id) REFERENCES public.teams(id)
+);
 CREATE TABLE public.inventory (
-  user_id bigint NOT NULL,
-  inventory_type bigint,
   inventory_item text,
   current_stock bigint,
   required_stock bigint,
@@ -12,27 +21,69 @@ CREATE TABLE public.inventory (
   note text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  team_id bigint NOT NULL,
+  meal_id bigint,
+  inventory_type USER-DEFINED,
+  price_per_unit bigint,
   CONSTRAINT inventory_pkey PRIMARY KEY (id),
-  CONSTRAINT inventory_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user(id)
+  CONSTRAINT inventory_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id),
+  CONSTRAINT inventory_meal_id_fkey FOREIGN KEY (meal_id) REFERENCES public.meals(id)
+);
+CREATE TABLE public.issue_comments (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  issue_id bigint,
+  comment character varying,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT issue_comments_pkey PRIMARY KEY (id),
+  CONSTRAINT issue_comments_issue_id_fkey FOREIGN KEY (issue_id) REFERENCES public.issues(id)
+);
+CREATE TABLE public.issues (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  player_id bigint,
+  player_team text,
+  team_context text NOT NULL,
+  away_team text,
+  description text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT issues_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.meals (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  game_id bigint NOT NULL,
+  pre_game_snack text,
+  post_game_meal text,
+  CONSTRAINT meals_pkey PRIMARY KEY (id),
+  CONSTRAINT meals_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id)
 );
 CREATE TABLE public.task (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   user_id bigint,
   task_name text,
   task_complete boolean,
-  task_category bigint,
   task_description text,
   task_type bigint,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  task_date date,
+  task_time time without time zone,
+  is_repeating boolean NOT NULL DEFAULT false,
+  repeating_day integer CHECK (repeating_day IS NULL OR repeating_day >= 0 AND repeating_day <= 6),
+  task_category USER-DEFINED,
   CONSTRAINT task_pkey PRIMARY KEY (id),
   CONSTRAINT task_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user(id)
+);
+CREATE TABLE public.teams (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  team_name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teams_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.user (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   user_role text,
-  user_team text,
   slugger_user_id text UNIQUE,
   user_name text,
-  CONSTRAINT user_pkey PRIMARY KEY (id)
+  user_team bigint,
+  CONSTRAINT user_pkey PRIMARY KEY (id),
+  CONSTRAINT user_team_fkey FOREIGN KEY (user_team) REFERENCES public.teams(id)
 );

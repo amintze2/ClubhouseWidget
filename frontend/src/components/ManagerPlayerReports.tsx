@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { issuesApi } from '../services/api';
+import { issuesApi, type IssueComment } from '../services/api';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -33,39 +33,17 @@ import type {
   TeamContextFilter,
 } from './reports/types';
 
-const INITIAL_COMMENTS: Record<string, ReportComment[]> = {
-  '1': [
-    {
-      id: 'c1',
-      reportId: '1',
-      authorRole: 'clubhouse_manager',
-      authorName: 'Test CM',
-      authorInitials: 'TC',
-      body: 'I have notified maintenance. They should check this after batting practice.',
-      createdAt: '2026-02-24T14:15:00Z',
-    },
-    {
-      id: 'c2',
-      reportId: '1',
-      authorRole: 'clubhouse_manager',
-      authorName: 'Maintenance',
-      authorInitials: 'M',
-      body: 'On site now. We are inspecting the hot water line and boiler settings.',
-      createdAt: '2026-02-24T15:05:00Z',
-    },
-  ],
-  '2': [
-    {
-      id: 'c3',
-      reportId: '2',
-      authorRole: 'clubhouse_manager',
-      authorName: 'Clubhouse Manager',
-      authorInitials: 'CM',
-      body: 'Laundry was restocked. Please confirm next time you are back in the clubhouse.',
-      createdAt: '2026-02-24T16:10:00Z',
-    },
-  ],
-};
+function toReportComment(dbComment: IssueComment, authorName: string): ReportComment {
+  return {
+    id: String(dbComment.id),
+    reportId: String(dbComment.issue_id),
+    authorRole: 'clubhouse_manager',
+    authorName,
+    authorInitials: buildInitials(authorName),
+    body: dbComment.comment ?? '',
+    createdAt: dbComment.created_at,
+  };
+}
 
 export function ManagerPlayerReports() {
   const { user } = useAuth();
@@ -76,7 +54,7 @@ export function ManagerPlayerReports() {
   const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('all');
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
   const [statusUpdateMessage, setStatusUpdateMessage] = useState('');
-  const [commentsByReportId, setCommentsByReportId] = useState<Record<string, ReportComment[]>>(INITIAL_COMMENTS);
+  const [commentsByReportId, setCommentsByReportId] = useState<Record<string, ReportComment[]>>({});
 
   useEffect(() => {
     const fetchIssues = async () => {
@@ -116,8 +94,22 @@ export function ManagerPlayerReports() {
 
   const selectedIssue = issues.find((issue) => issue.id === selectedIssueId) ?? null;
 
-  const openIssueDetails = (issueId: number) => {
+  const openIssueDetails = async (issueId: number) => {
     setSelectedIssueId(issueId);
+    // Only fetch if we haven't loaded comments for this issue yet
+    if (commentsByReportId[String(issueId)] === undefined) {
+      try {
+        const dbComments = await issuesApi.getIssueComments(issueId);
+        const authorName = user?.user_name || 'Clubhouse Manager';
+        setCommentsByReportId((prev) => ({
+          ...prev,
+          [String(issueId)]: dbComments.map((c) => toReportComment(c, authorName)),
+        }));
+      } catch (err) {
+        console.error('Failed to fetch comments:', err);
+        setCommentsByReportId((prev) => ({ ...prev, [String(issueId)]: [] }));
+      }
+    }
   };
 
   const getReportComments = (reportId: number) => commentsByReportId[reportId.toString()] ?? [];
@@ -127,28 +119,23 @@ export function ManagerPlayerReports() {
     return comments.length > 0 ? comments[comments.length - 1] : null;
   };
 
-  const handleAddComment = (reportId: string, body: string) => {
-    // TODO: persist comments to Supabase when manager report comments backend is available.
+  const handleAddComment = async (reportId: string, body: string) => {
     const authorName = user?.user_name || 'Clubhouse Manager';
-    const nextComment: ReportComment = {
-      id: `c-${Date.now()}`,
-      reportId,
-      authorRole: 'clubhouse_manager',
-      authorName,
-      authorInitials: buildInitials(authorName),
-      body,
-      createdAt: new Date().toISOString(),
-    };
-
-    setCommentsByReportId((prev) => ({
-      ...prev,
-      [reportId]: [...(prev[reportId] ?? []), nextComment],
-    }));
-    setStatusUpdateMessage('Comment added.');
+    try {
+      const dbComment = await issuesApi.addIssueComment(parseInt(reportId, 10), body);
+      const nextComment = toReportComment(dbComment, authorName);
+      setCommentsByReportId((prev) => ({
+        ...prev,
+        [reportId]: [...(prev[reportId] ?? []), nextComment],
+      }));
+      setStatusUpdateMessage('Comment added.');
+    } catch (err) {
+      console.error('Failed to save comment:', err);
+      setStatusUpdateMessage('Failed to save comment. Please try again.');
+    }
   };
 
   const handleStatusUpdate = (issueId: number, nextStatus: ReportStatus) => {
-    // TODO: persist status updates to Supabase
     setIssues((prev) =>
       prev.map((issue) => (issue.id === issueId ? { ...issue, status: nextStatus } : issue)),
     );
