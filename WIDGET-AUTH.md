@@ -284,7 +284,7 @@ app.use((req, res, next) => {
 
 1. Start your widget's local server (e.g. `http://localhost:4000`)
 2. Ask the Slugger platform team to whitelist your widget's domain in the backend config
-3. Log in to Slugger: `http://localhost:3000/sign-in`
+3. Log in to Slugger: `h3`
 4. Open the integration test page: `http://localhost:3000/widget-test`
    - Change the Widget URL field to your local address (e.g. `http://localhost:4000`)
    - Watch the auth status and Event Log inside the iframe

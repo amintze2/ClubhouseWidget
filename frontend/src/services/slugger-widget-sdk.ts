@@ -68,6 +68,8 @@ export class SluggerWidgetSDK {
       this.readyResolve = resolve;
       this.readyReject = reject;
     });
+    // Prevent unhandled rejection warnings when callers use callbacks instead of waitForAuth()
+    this.readyPromise.catch(() => {});
 
     // Bind once so removeEventListener works correctly in destroy()
     this.messageHandler = this.handleMessage.bind(this);

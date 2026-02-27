@@ -55,12 +55,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } else if (!isInIframe) {
       // Not in iframe - use manual login
       loadUserFromStorage();
+    } else if (isInIframe && sluggerError) {
+      // Auth error in iframe - must check before the "still loading" branch
+      setLoading(false);
     } else if (isInIframe && !sluggerLoading && !sluggerUser) {
       // In iframe but no auth yet - still loading
       setLoading(true);
-    } else if (isInIframe && sluggerError) {
-      // Auth error in iframe
-      setLoading(false);
     }
   }, [sluggerUser, sluggerAuth, sluggerLoading, sluggerError, sdk]);
 
