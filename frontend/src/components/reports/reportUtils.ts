@@ -13,7 +13,10 @@ export const formatReportTimestamp = (isoString: string) => {
 
 export const formatCommentTime = (isoString: string) => {
   const date = new Date(isoString);
-  return date.toLocaleTimeString(undefined, {
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   });

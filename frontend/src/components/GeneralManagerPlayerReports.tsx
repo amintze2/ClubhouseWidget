@@ -160,7 +160,7 @@ export function GeneralManagerPlayerReports() {
             loading={loadingIssues}
             onOpenIssue={openIssueDetails}
             getLatestCommentPreview={getLatestCommentPreview}
-            showStatusColumn={false}
+            showStatusColumn={true}
             onToggleFlag={toggleIssueFlag}
             flagUpdatingIssueIds={flagUpdatingIssueIds}
           />
