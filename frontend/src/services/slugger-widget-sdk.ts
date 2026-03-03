@@ -85,6 +85,7 @@ export class SluggerWidgetSDK {
     setTimeout(() => {
       if (!this.auth) {
         const error = 'Authentication timeout - no token received from shell';
+        console.error('[SluggerSDK] Timeout:', error);
         this.options.onAuthError(error);
         this.readyReject(new Error(error));
       }
@@ -92,7 +93,15 @@ export class SluggerWidgetSDK {
   }
 
   private handleMessage(event: MessageEvent): void {
+    // Log every postMessage so origin mismatches and missing events are visible
+    if (event.data?.type?.startsWith?.('SLUGGER')) {
+      console.log('[SluggerSDK] postMessage received:', event.origin, event.data);
+    }
+
     if (!this.options.allowedOrigins.includes(event.origin)) {
+      if (event.data?.type === 'SLUGGER_AUTH') {
+        console.error('[SluggerSDK] SLUGGER_AUTH rejected — origin not allowed:', event.origin, '\nAllowed:', this.options.allowedOrigins);
+      }
       return;
     }
 
@@ -101,6 +110,7 @@ export class SluggerWidgetSDK {
       // Don't await — fire-and-forget with internal error handling
       this.processAuth(event.data.payload).catch((err) => {
         const message = err instanceof Error ? err.message : 'Auth processing failed';
+        console.error('[SluggerSDK] processAuth failed:', message);
         this.options.onAuthError(message);
         this.readyReject(new Error(message));
       });
