@@ -17,6 +17,7 @@ export type View =
   | 'budget'
   | 'meals'
   | 'manager_player_reports'
+  | 'general_manager_player_reports'
   | 'player_info'
   | 'general_manager_info';
 

@@ -8,6 +8,7 @@ export interface Issue {
   away_team: string | null;
   description: string;
   created_at: string;
+  gm_flagged?: boolean;
 }
 
 export interface IssueComment {
@@ -40,6 +41,17 @@ export const issuesApi = {
     return data || [];
   },
 
+  getIssuesByPlayerTeam: async (teamName: string): Promise<Issue[]> => {
+    const { data, error } = await supabase
+      .from('issues')
+      .select('*')
+      .eq('player_team', teamName)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
   getIssueComments: async (issueId: number): Promise<IssueComment[]> => {
     const { data, error } = await supabase
       .from('issue_comments')
@@ -61,5 +73,14 @@ export const issuesApi = {
     if (error) throw new Error(error.message);
     if (!result) throw new Error('Failed to save comment');
     return result;
+  },
+
+  updateIssueFlag: async (issueId: number, gmFlagged: boolean): Promise<void> => {
+    const { error } = await supabase
+      .from('issues')
+      .update({ gm_flagged: gmFlagged })
+      .eq('id', issueId);
+
+    if (error) throw new Error(error.message);
   },
 };

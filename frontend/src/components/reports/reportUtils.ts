@@ -25,6 +25,16 @@ export const getStatusBadgeClass = (status: ReportStatus) => {
   return 'border-green-200 bg-green-100 text-green-800';
 };
 
+export const getFlaggedBadgeClass = (isFlagged?: boolean) => {
+  if (!isFlagged) return '';
+  return 'border-amber-200 bg-amber-100 text-amber-900';
+};
+
+export const getFlaggedReportRowClass = (isFlagged?: boolean) => {
+  if (!isFlagged) return '';
+  return 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500';
+};
+
 export const buildInitials = (name: string) => {
   const initials = name
     .split(' ')
