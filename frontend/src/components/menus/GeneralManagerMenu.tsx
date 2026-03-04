@@ -3,7 +3,6 @@ import type { RoleSidebarMenuItem } from '../RoleSidebar';
 import { GeneralManagerPlayerReports } from '../GeneralManagerPlayerReports';
 
 export const generalManagerMenuItems: RoleSidebarMenuItem[] = [
-  { id: 'general_manager_info', icon: BarChart3, label: 'General Manager Info' },
   { id: 'general_manager_player_reports', icon: ClipboardList, label: 'Player Reports' },
 ];
 

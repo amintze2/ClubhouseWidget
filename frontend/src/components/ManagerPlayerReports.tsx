@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { issuesApi, type IssueComment } from '../services/api';
+import { issuesApi, type IssueComment, type IssueDbStatus } from '../services/api';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -37,6 +37,18 @@ function toReportComment(dbComment: IssueComment, authorName: string): ReportCom
   };
 }
 
+function toDisplayStatus(dbStatus?: IssueDbStatus): ReportStatus {
+  if (dbStatus === 'in_progress') return 'In Progress';
+  if (dbStatus === 'resolved') return 'Resolved';
+  return 'New';
+}
+
+function toDbStatus(displayStatus: ReportStatus): IssueDbStatus {
+  if (displayStatus === 'In Progress') return 'in_progress';
+  if (displayStatus === 'Resolved') return 'resolved';
+  return 'new';
+}
+
 export function ManagerPlayerReports() {
   const { user } = useAuth();
   const [issues, setIssues] = useState<DisplayIssue[]>([]);
@@ -56,7 +68,7 @@ export function ManagerPlayerReports() {
           data.map((issue) => ({
             ...issue,
             gm_flagged: Boolean(issue.gm_flagged),
-            status: 'New' as ReportStatus,
+            status: toDisplayStatus(issue.status),
           })),
         );
       } catch (err) {
@@ -133,12 +145,24 @@ export function ManagerPlayerReports() {
     }
   };
 
-  const handleStatusUpdate = (issueId: number, nextStatus: ReportStatus) => {
+  const handleStatusUpdate = async (issueId: number, nextStatus: ReportStatus) => {
+    const previousIssue = issues.find((issue) => issue.id === issueId);
+    const previousStatus = previousIssue?.status ?? 'New';
     setIssues((prev) =>
       prev.map((issue) => (issue.id === issueId ? { ...issue, status: nextStatus } : issue)),
     );
     setStatusUpdateMessage(`Status updated to ${nextStatus}.`);
     setSelectedIssueId(null);
+
+    try {
+      await issuesApi.updateIssueStatus(issueId, toDbStatus(nextStatus));
+    } catch (err) {
+      console.error('Failed to persist issue status update:', err);
+      setIssues((prev) =>
+        prev.map((issue) => (issue.id === issueId ? { ...issue, status: previousStatus } : issue)),
+      );
+      setStatusUpdateMessage('Failed to save status. Please try again.');
+    }
   };
 
   return (

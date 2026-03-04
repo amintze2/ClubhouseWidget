@@ -1,5 +1,7 @@
 import { supabase } from '../../utils/supabase/client';
 
+export type IssueDbStatus = 'new' | 'in_progress' | 'resolved';
+
 export interface Issue {
   id: number;
   player_id: number | null;
@@ -9,6 +11,7 @@ export interface Issue {
   description: string;
   created_at: string;
   gm_flagged?: boolean;
+  status?: IssueDbStatus;
 }
 
 export interface IssueComment {
@@ -79,6 +82,15 @@ export const issuesApi = {
     const { error } = await supabase
       .from('issues')
       .update({ gm_flagged: gmFlagged })
+      .eq('id', issueId);
+
+    if (error) throw new Error(error.message);
+  },
+
+  updateIssueStatus: async (issueId: number, status: IssueDbStatus): Promise<void> => {
+    const { error } = await supabase
+      .from('issues')
+      .update({ status })
       .eq('id', issueId);
 
     if (error) throw new Error(error.message);

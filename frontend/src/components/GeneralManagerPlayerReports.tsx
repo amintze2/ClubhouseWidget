@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ReportDetails } from './reports/ReportDetails';
 import { ReportsTable } from './reports/ReportsTable';
 import { buildInitials, getFlaggedBadgeClass } from './reports/reportUtils';
+import type { IssueDbStatus } from '../services/api';
 import type { DisplayIssue, ReportComment, ReportStatus, TeamContextFilter } from './reports/types';
 
 function toReportComment(dbComment: IssueComment, authorName: string): ReportComment {
@@ -21,6 +22,12 @@ function toReportComment(dbComment: IssueComment, authorName: string): ReportCom
     body: dbComment.comment ?? '',
     createdAt: dbComment.created_at,
   };
+}
+
+function toDisplayStatus(dbStatus?: IssueDbStatus): ReportStatus {
+  if (dbStatus === 'in_progress') return 'In Progress';
+  if (dbStatus === 'resolved') return 'Resolved';
+  return 'New';
 }
 
 export function GeneralManagerPlayerReports() {
@@ -54,7 +61,7 @@ export function GeneralManagerPlayerReports() {
           data.map((issue) => ({
             ...issue,
             gm_flagged: Boolean(issue.gm_flagged),
-            status: 'New' as ReportStatus,
+            status: toDisplayStatus(issue.status),
           })),
         );
       } catch (err) {
