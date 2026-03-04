@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { issuesApi, teamsApi, type IssueComment } from '../services/api';
+import { supabase } from '../utils/supabase/client';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
@@ -41,6 +42,7 @@ export function GeneralManagerPlayerReports() {
   const [teamName, setTeamName] = useState<string | null>(null);
   const [flagUpdatingIssueIds, setFlagUpdatingIssueIds] = useState<Set<number>>(new Set());
   const [commentsByReportId, setCommentsByReportId] = useState<Record<string, ReportComment[]>>({});
+  const issueIds = useMemo(() => issues.map((issue) => issue.id), [issues]);
 
   useEffect(() => {
     const fetchIssuesForGmTeam = async () => {
@@ -74,6 +76,64 @@ export function GeneralManagerPlayerReports() {
 
     fetchIssuesForGmTeam();
   }, [user?.user_team]);
+
+  useEffect(() => {
+    const loadInitialCommentPreviews = async () => {
+      if (issueIds.length === 0) return;
+      try {
+        const { data, error } = await supabase
+          .from('issue_comments')
+          .select('*')
+          .in('issue_id', issueIds)
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          console.error('Failed to preload issue comment previews:', error);
+          return;
+        }
+
+        const comments = (data ?? []) as IssueComment[];
+        const groupedComments = comments.reduce<Record<string, ReportComment[]>>((acc, comment) => {
+          if (!comment.issue_id) return acc;
+          const key = String(comment.issue_id);
+          const nextComment = toReportComment(comment, 'Clubhouse Manager');
+          acc[key] = [...(acc[key] ?? []), nextComment];
+          return acc;
+        }, {});
+
+        setCommentsByReportId((prev) => ({ ...prev, ...groupedComments }));
+      } catch (err) {
+        console.error('Failed to preload issue comment previews:', err);
+      }
+    };
+
+    loadInitialCommentPreviews();
+  }, [issueIds]);
+
+  useEffect(() => {
+    if (issueIds.length === 0) return;
+
+    const issueIdSet = new Set(issueIds);
+    const channel = supabase
+      .channel('gm-issue-comments')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'issue_comments' }, (payload) => {
+        const insertedComment = payload.new as IssueComment;
+        if (!insertedComment.issue_id || !issueIdSet.has(insertedComment.issue_id)) return;
+
+        const reportId = String(insertedComment.issue_id);
+        const nextComment = toReportComment(insertedComment, 'Clubhouse Manager');
+        setCommentsByReportId((prev) => {
+          const existing = prev[reportId] ?? [];
+          if (existing.some((comment) => comment.id === nextComment.id)) return prev;
+          return { ...prev, [reportId]: [...existing, nextComment] };
+        });
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [issueIds]);
 
   const filteredIssues = useMemo(() => {
     return issues.filter((issue) => (teamFilter === 'all' ? true : issue.team_context === teamFilter));
