@@ -68,6 +68,8 @@ export class SluggerWidgetSDK {
       this.readyResolve = resolve;
       this.readyReject = reject;
     });
+    // Prevent unhandled rejection warnings when callers use callbacks instead of waitForAuth()
+    this.readyPromise.catch(() => {});
 
     // Bind once so removeEventListener works correctly in destroy()
     this.messageHandler = this.handleMessage.bind(this);
@@ -83,6 +85,7 @@ export class SluggerWidgetSDK {
     setTimeout(() => {
       if (!this.auth) {
         const error = 'Authentication timeout - no token received from shell';
+        console.error('[SluggerSDK] Timeout:', error);
         this.options.onAuthError(error);
         this.readyReject(new Error(error));
       }
@@ -90,7 +93,15 @@ export class SluggerWidgetSDK {
   }
 
   private handleMessage(event: MessageEvent): void {
+    // Log every postMessage so origin mismatches and missing events are visible
+    if (event.data?.type?.startsWith?.('SLUGGER')) {
+      console.log('[SluggerSDK] postMessage received:', event.origin, event.data);
+    }
+
     if (!this.options.allowedOrigins.includes(event.origin)) {
+      if (event.data?.type === 'SLUGGER_AUTH') {
+        console.error('[SluggerSDK] SLUGGER_AUTH rejected — origin not allowed:', event.origin, '\nAllowed:', this.options.allowedOrigins);
+      }
       return;
     }
 
@@ -99,6 +110,7 @@ export class SluggerWidgetSDK {
       // Don't await — fire-and-forget with internal error handling
       this.processAuth(event.data.payload).catch((err) => {
         const message = err instanceof Error ? err.message : 'Auth processing failed';
+        console.error('[SluggerSDK] processAuth failed:', message);
         this.options.onAuthError(message);
         this.readyReject(new Error(message));
       });
@@ -155,10 +167,15 @@ export class SluggerWidgetSDK {
   }
 
   private sendReady(): void {
-    window.parent.postMessage(
-      { type: 'SLUGGER_WIDGET_READY', widgetId: this.options.widgetId },
-      '*'
-    );
+    // Only notify the parent when actually embedded in an iframe.
+    // If window.parent === window we are the top-level page (local dev) and
+    // posting to foreign origins would throw a cross-origin error.
+    if (window.parent === window) return;
+
+    const msg = { type: 'SLUGGER_WIDGET_READY', widgetId: this.options.widgetId };
+    this.options.allowedOrigins.forEach((origin) => {
+      window.parent.postMessage(msg, origin);
+    });
   }
 
   /** Wait for authentication to be ready */

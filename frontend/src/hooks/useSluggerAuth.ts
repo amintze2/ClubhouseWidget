@@ -21,6 +21,7 @@ export function useSluggerAuth(widgetId: string) {
           setLoading(false);
         },
         onAuthError: (err) => {
+          console.error('[useSluggerAuth] Auth error:', err);
           setError(err);
           setLoading(false);
         },
