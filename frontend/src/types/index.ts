@@ -16,9 +16,12 @@ export type View =
   | 'recurring'
   | 'budget'
   | 'meals'
+  | 'manager_messages'
   | 'manager_player_reports'
   | 'general_manager_player_reports'
   | 'player_info'
+  | 'player_meals'
+  | 'player_reporting'
   | 'general_manager_info';
 
 export interface AppUser {
