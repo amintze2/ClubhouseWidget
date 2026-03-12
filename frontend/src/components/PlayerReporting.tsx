@@ -20,8 +20,6 @@ const AWAY_TEAMS = [
   'Lexington Legends',
   'Southern Maryland Blue Crabs',
   'Charleston Dirty Birds',
-  'Team 11',
-  'Team 12',
 ];
 
 export function PlayerReporting() {

@@ -1,92 +1,90 @@
-import React from 'react';
-import { useMessaging } from '../../contexts/MessagingContext';
-import { ConversationWithMeta } from '../../services/api/messages';
-import { cn } from '../ui/utils';
+import { ScrollArea } from '../ui/scroll-area';
+import { Button } from '../ui/button';
+import type { ManagerConversationSummary } from '../../services/api';
 
 interface ConversationListProps {
-  activeConversationId: string | null;
-  onSelectConversation: (id: string) => void;
+  conversations: ManagerConversationSummary[];
+  selectedConversationId: string | null;
+  onSelectConversation: (conversationId: string) => void;
 }
 
-function formatTime(iso: string | null): string {
-  if (!iso) return '';
-  const date = new Date(iso);
+function formatConversationDate(createdAt: string): string {
+  const parsed = new Date(createdAt);
+  if (Number.isNaN(parsed.getTime())) return '';
   const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const isSameDay =
+    parsed.getDate() === now.getDate() &&
+    parsed.getMonth() === now.getMonth() &&
+    parsed.getFullYear() === now.getFullYear();
+
+  if (isSameDay) {
+    return parsed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
-  if (diffDays < 7) {
-    return date.toLocaleDateString([], { weekday: 'short' });
-  }
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+  return parsed.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-function ConversationItem({
-  conversation,
-  isActive,
-  onSelect,
-}: {
-  conversation: ConversationWithMeta;
-  isActive: boolean;
-  onSelect: () => void;
-}) {
-  const isBulletin = conversation.type === 'bulletin';
-
+export function ConversationList({
+  conversations,
+  selectedConversationId,
+  onSelectConversation,
+}: ConversationListProps) {
   return (
-    <button
-      onClick={onSelect}
-      className={cn(
-        'w-full text-left px-4 py-3 flex flex-col gap-0.5 hover:bg-gray-50 transition-colors border-b border-gray-100',
-        isActive && 'bg-blue-50 hover:bg-blue-50',
-        isBulletin && 'bg-amber-50 hover:bg-amber-100'
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className={cn('text-sm font-medium truncate', isBulletin && 'text-amber-800')}>
-          {conversation.name ?? 'Direct Message'}
-          {isBulletin && <span className="ml-1 text-[10px] font-normal text-amber-600 uppercase tracking-wide">Pinned</span>}
-        </span>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] text-gray-400">{formatTime(conversation.last_message_at)}</span>
-          {conversation.unread_count > 0 && (
-            <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white">
-              {conversation.unread_count}
-            </span>
-          )}
-        </div>
-      </div>
-      {conversation.last_message && (
-        <p className="text-xs text-gray-500 truncate">{conversation.last_message}</p>
-      )}
-      {!conversation.last_message && (
-        <p className="text-xs text-gray-400 italic">No messages yet</p>
-      )}
-    </button>
-  );
-}
+    <div className="flex h-full min-h-0 flex-col">
+      {conversations.length === 0 ? (
+        <p className="px-2 py-2 text-sm text-muted-foreground">No conversations yet.</p>
+      ) : (
+        <ScrollArea className="h-full pr-1">
+          <div className="space-y-2 p-1.5">
+            {conversations.map((conversation) => {
+              const isSelected = selectedConversationId === conversation.id;
+              const displayName = conversation.name ?? conversation.other_manager_name;
+              const initial = displayName.charAt(0).toUpperCase();
+              const isBulletin = conversation.conversation_type === 'bulletin';
 
-export function ConversationList({ activeConversationId, onSelectConversation }: ConversationListProps) {
-  const { conversations } = useMessaging();
-
-  if (conversations.length === 0) {
-    return (
-      <div className="px-4 py-8 text-center text-sm text-gray-400">
-        No conversations yet.<br />Start one with the + button.
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {conversations.map(conv => (
-        <ConversationItem
-          key={conv.id}
-          conversation={conv}
-          isActive={conv.id === activeConversationId}
-          onSelect={() => onSelectConversation(conv.id)}
-        />
-      ))}
+              return (
+                <Button
+                  key={conversation.id}
+                  type="button"
+                  variant="ghost"
+                  className={`h-auto w-full justify-start rounded-lg border border-transparent px-2.5 py-3 text-left ${
+                    isSelected
+                      ? 'border-blue-200 bg-accent'
+                      : 'hover:bg-background/80'
+                  } ${isBulletin ? 'bg-amber-50 hover:bg-amber-100 border-amber-200' : ''}`}
+                  onClick={() => onSelectConversation(conversation.id)}
+                >
+                  <div className="mr-2.5 flex w-10 shrink-0 justify-center">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                      isBulletin ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {initial}
+                    </div>
+                  </div>
+                  <div className="flex w-full min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{displayName}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {isBulletin ? 'League bulletin board' : 'Direct message'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-[11px] text-muted-foreground">
+                        {formatConversationDate(conversation.created_at)}
+                      </span>
+                      {conversation.unread_count > 0 && (
+                        <span className="flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white">
+                          {conversation.unread_count}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 }

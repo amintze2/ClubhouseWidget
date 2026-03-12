@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { issuesApi, type IssueComment } from '../services/api';
+import { issuesApi, type IssueComment, type IssueDbStatus } from '../services/api';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -14,17 +14,9 @@ import {
 } from './ui/dialog';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from './ui/table';
 import { ReportDetails } from './reports/ReportDetails';
-import { ReportTableRowDescription } from './reports/ReportTableRowDescription';
-import { buildInitials, formatReportTimestamp, getStatusBadgeClass } from './reports/reportUtils';
+import { ReportsTable } from './reports/ReportsTable';
+import { buildInitials, getFlaggedBadgeClass } from './reports/reportUtils';
 import type {
   DisplayIssue,
   ReportComment,
@@ -45,6 +37,18 @@ function toReportComment(dbComment: IssueComment, authorName: string): ReportCom
   };
 }
 
+function toDisplayStatus(dbStatus?: IssueDbStatus): ReportStatus {
+  if (dbStatus === 'in_progress') return 'In Progress';
+  if (dbStatus === 'resolved') return 'Resolved';
+  return 'New';
+}
+
+function toDbStatus(displayStatus: ReportStatus): IssueDbStatus {
+  if (displayStatus === 'In Progress') return 'in_progress';
+  if (displayStatus === 'Resolved') return 'resolved';
+  return 'new';
+}
+
 export function ManagerPlayerReports() {
   const { user } = useAuth();
   const [issues, setIssues] = useState<DisplayIssue[]>([]);
@@ -60,7 +64,13 @@ export function ManagerPlayerReports() {
     const fetchIssues = async () => {
       try {
         const data = await issuesApi.getAllIssues();
-        setIssues(data.map((issue) => ({ ...issue, status: 'New' as ReportStatus })));
+        setIssues(
+          data.map((issue) => ({
+            ...issue,
+            gm_flagged: Boolean(issue.gm_flagged),
+            status: toDisplayStatus(issue.status),
+          })),
+        );
       } catch (err) {
         setFetchError('Failed to load reports. Please try again.');
         console.error('Failed to fetch issues:', err);
@@ -135,12 +145,24 @@ export function ManagerPlayerReports() {
     }
   };
 
-  const handleStatusUpdate = (issueId: number, nextStatus: ReportStatus) => {
+  const handleStatusUpdate = async (issueId: number, nextStatus: ReportStatus) => {
+    const previousIssue = issues.find((issue) => issue.id === issueId);
+    const previousStatus = previousIssue?.status ?? 'New';
     setIssues((prev) =>
       prev.map((issue) => (issue.id === issueId ? { ...issue, status: nextStatus } : issue)),
     );
     setStatusUpdateMessage(`Status updated to ${nextStatus}.`);
     setSelectedIssueId(null);
+
+    try {
+      await issuesApi.updateIssueStatus(issueId, toDbStatus(nextStatus));
+    } catch (err) {
+      console.error('Failed to persist issue status update:', err);
+      setIssues((prev) =>
+        prev.map((issue) => (issue.id === issueId ? { ...issue, status: previousStatus } : issue)),
+      );
+      setStatusUpdateMessage('Failed to save status. Please try again.');
+    }
   };
 
   return (
@@ -195,52 +217,13 @@ export function ManagerPlayerReports() {
           {loadingIssues ? (
             <p className="text-sm text-muted-foreground">Loading reports...</p>
           ) : (
-            <Table className="table-fixed w-full">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[16%]">Submitted</TableHead>
-                  <TableHead className="w-[16%]">Team</TableHead>
-                  <TableHead className="w-[10%]">Team Context</TableHead>
-                  <TableHead className="w-[10%]">Status</TableHead>
-                  <TableHead className="w-[38%]">Description</TableHead>
-                  <TableHead className="w-[10%]">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredIssues.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
-                      No reports found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredIssues.map((issue) => (
-                    <TableRow key={issue.id}>
-                      <TableCell>{formatReportTimestamp(issue.created_at)}</TableCell>
-                      <TableCell>{issue.player_team ?? '-'}</TableCell>
-                      <TableCell className="capitalize">{issue.team_context}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={getStatusBadgeClass(issue.status)}>
-                          {issue.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="w-[38%]">
-                        <ReportTableRowDescription
-                          description={issue.description}
-                          latestComment={getLatestCommentPreview(issue.id)}
-                          onOpen={() => openIssueDetails(issue.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button type="button" variant="outline" size="sm" onClick={() => openIssueDetails(issue.id)}>
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <ReportsTable
+              issues={filteredIssues}
+              loading={loadingIssues}
+              onOpenIssue={openIssueDetails}
+              getLatestCommentPreview={getLatestCommentPreview}
+              showStatusColumn={true}
+            />
           )}
         </CardContent>
       </Card>
@@ -250,7 +233,14 @@ export function ManagerPlayerReports() {
           {selectedIssue && (
             <>
               <DialogHeader>
-                <DialogTitle>Report Details</DialogTitle>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Report Details</DialogTitle>
+                  {selectedIssue.gm_flagged && (
+                    <Badge variant="outline" className={getFlaggedBadgeClass(selectedIssue.gm_flagged)}>
+                      Flagged
+                    </Badge>
+                  )}
+                </div>
                 <DialogDescription>
                   {selectedIssue.player_team ?? 'Unknown Team'}
                   {selectedIssue.team_context === 'away' && selectedIssue.away_team

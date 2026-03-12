@@ -7,7 +7,7 @@ export const clubhouseManagerMenuItems: RoleSidebarMenuItem[] = [
   { id: 'recurring', icon: Repeat, label: 'Recurring Tasks' },
   { id: 'inventory', icon: Package, label: 'Inventory' },
   { id: 'meals', icon: Utensils, label: 'Meal Planning' },
+  { id: 'messages', icon: MessageSquare, label: 'Messages' },
   { id: 'manager_player_reports', icon: ClipboardList, label: 'Player Reports' },
   { id: 'budget', icon: DollarSign, label: 'Budget' },
-  { id: 'messages', icon: MessageSquare, label: 'Messages' },
 ];

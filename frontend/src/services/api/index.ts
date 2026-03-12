@@ -7,3 +7,4 @@ export * from './games';
 export * from './meals';
 export * from './issues';
 export * from './messages';
+export * from './managerMessaging';
