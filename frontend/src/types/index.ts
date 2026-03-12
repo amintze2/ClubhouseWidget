@@ -18,7 +18,8 @@ export type View =
   | 'meals'
   | 'manager_player_reports'
   | 'player_info'
-  | 'general_manager_info';
+  | 'general_manager_info'
+  | 'messages';
 
 export interface AppUser {
   username: string;

@@ -14,8 +14,10 @@ import { RecurringTasks } from './components/RecurringTasks';
 import { Budget } from './components/Budget';
 import { MealPlanning } from './components/MealPlanning';
 import { ManagerPlayerReports } from './components/ManagerPlayerReports';
+import { MessagingView } from './components/MessagingView';
 import { Login } from './components/Login';
 import { useAuth } from './contexts/AuthContext';
+import { MessagingProvider } from './contexts/MessagingContext';
 import { RoleSidebar } from './components/RoleSidebar';
 import { getMenuItemsForRole, renderRoleContent } from './components/menus/roleMenus';
 import { useTaskSync } from './hooks/useTaskSync';
@@ -127,6 +129,7 @@ export default function App() {
   const menuItems = getMenuItemsForRole(user.jobRole);
 
   return (
+    <MessagingProvider userId={backendUser?.id ?? null}>
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full bg-gray-50">
         <RoleSidebar
@@ -228,10 +231,12 @@ export default function App() {
             )}
             {activeView === 'budget' && <Budget inventoryData={inventoryData} />}
             {activeView === 'manager_player_reports' && <ManagerPlayerReports />}
+            {activeView === 'messages' && <MessagingView />}
             {renderRoleContent(user.jobRole, activeView)}
           </main>
         </div>
       </div>
     </SidebarProvider>
+    </MessagingProvider>
   );
 }

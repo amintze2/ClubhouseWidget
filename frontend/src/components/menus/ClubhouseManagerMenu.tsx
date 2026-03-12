@@ -1,4 +1,4 @@
-import { Calendar, ClipboardList, DollarSign, Package, Repeat, Utensils } from 'lucide-react';
+import { Calendar, ClipboardList, DollarSign, MessageSquare, Package, Repeat, Utensils } from 'lucide-react';
 import type { RoleSidebarMenuItem } from '../RoleSidebar';
 
 export const clubhouseManagerMenuItems: RoleSidebarMenuItem[] = [
@@ -9,4 +9,5 @@ export const clubhouseManagerMenuItems: RoleSidebarMenuItem[] = [
   { id: 'meals', icon: Utensils, label: 'Meal Planning' },
   { id: 'manager_player_reports', icon: ClipboardList, label: 'Player Reports' },
   { id: 'budget', icon: DollarSign, label: 'Budget' },
+  { id: 'messages', icon: MessageSquare, label: 'Messages' },
 ];

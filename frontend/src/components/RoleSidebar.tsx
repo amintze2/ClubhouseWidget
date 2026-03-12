@@ -4,6 +4,7 @@ import { ClipboardList, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { getMenuItemsForRole } from './menus/roleMenus';
+import { useMessaging } from '../contexts/MessagingContext';
 
 export type RoleSidebarView = string;
 
@@ -45,6 +46,7 @@ export function RoleSidebar({
   onSignOut,
 }: RoleSidebarProps) {
   const menuItems = getMenuItemsForRole(user.jobRole);
+  const { totalUnread } = useMessaging();
   return (
     <Sidebar>
       <SidebarHeader className="border-b px-6 py-4">
@@ -69,7 +71,12 @@ export function RoleSidebar({
                     isActive={activeView === item.id}
                   >
                     <item.icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+                    <span className="flex-1">{item.label}</span>
+                    {item.id === 'messages' && totalUnread > 0 && (
+                      <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white">
+                        {totalUnread > 99 ? '99+' : totalUnread}
+                      </span>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
