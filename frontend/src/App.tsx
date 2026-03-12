@@ -14,8 +14,10 @@ import { RecurringTasks } from './components/RecurringTasks';
 import { Budget } from './components/Budget';
 import { MealPlanning } from './components/MealPlanning';
 import { ManagerPlayerReports } from './components/ManagerPlayerReports';
+import { ManagerDirectMessages } from './components/ManagerDirectMessages';
 import { Login } from './components/Login';
 import { useAuth } from './contexts/AuthContext';
+import { MessagingProvider } from './contexts/MessagingContext';
 import { RoleSidebar } from './components/RoleSidebar';
 import { getMenuItemsForRole, renderRoleContent } from './components/menus/roleMenus';
 import { useTaskSync } from './hooks/useTaskSync';
@@ -24,6 +26,7 @@ import { useInventory } from './hooks/useInventory';
 import { useTaskManagement } from './hooks/useTaskManagement';
 import { useMealManagement } from './hooks/useMealManagement';
 import { useChecklistState } from './hooks/useChecklistState';
+import { getAppJobRole } from './utils/roles';
 import type { Task, AppUser, View } from './types/index';
 
 // Re-export Task so existing component imports from '../App' continue to resolve
@@ -40,9 +43,7 @@ export default function App() {
     if (!backendUser) return null;
     return {
       username: backendUser.user_name || 'User',
-      jobRole: backendUser.user_role?.toLowerCase().includes('general') ? 'general_manager'
-             : backendUser.user_role?.toLowerCase().includes('manager') ? 'clubhouse_manager'
-             : 'player',
+      jobRole: getAppJobRole(backendUser.user_role),
       team: backendUser.team_name || undefined,
     };
   }, [backendUser]);
@@ -127,6 +128,7 @@ export default function App() {
   const menuItems = getMenuItemsForRole(user.jobRole);
 
   return (
+    <MessagingProvider userId={backendUser?.id ?? null}>
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full bg-gray-50">
         <RoleSidebar
@@ -136,8 +138,8 @@ export default function App() {
           onSignOut={logout}
         />
 
-        <div className="flex-1">
-          <header className="bg-white border-b px-8 py-4 flex items-center gap-4">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <header className="shrink-0 bg-white border-b px-8 py-4 flex items-center gap-4">
             <SidebarTrigger />
             <div className="flex-1">
               <h1 className="font-semibold text-xl">{menuItems.find(item => item.id === activeView)?.label}</h1>
@@ -149,7 +151,13 @@ export default function App() {
             </div>
           </header>
 
-          <main className="p-8">
+          <main
+            className={
+              activeView === 'manager_messages'
+                ? 'flex-1 min-h-0 overflow-hidden p-6'
+                : 'flex-1 min-h-0 overflow-auto p-8'
+            }
+          >
             {activeView === 'checklist' && (
               <ClubhouseChecklist
                 tasks={tasks}
@@ -226,6 +234,7 @@ export default function App() {
                 setGameMealPlans={setGameMealPlans}
               />
             )}
+            {activeView === 'messages' && <ManagerDirectMessages />}
             {activeView === 'budget' && <Budget inventoryData={inventoryData} />}
             {activeView === 'manager_player_reports' && <ManagerPlayerReports />}
             {renderRoleContent(user.jobRole, activeView)}
@@ -233,5 +242,6 @@ export default function App() {
         </div>
       </div>
     </SidebarProvider>
+    </MessagingProvider>
   );
 }

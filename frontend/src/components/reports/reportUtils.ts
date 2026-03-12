@@ -13,7 +13,10 @@ export const formatReportTimestamp = (isoString: string) => {
 
 export const formatCommentTime = (isoString: string) => {
   const date = new Date(isoString);
-  return date.toLocaleTimeString(undefined, {
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -23,6 +26,16 @@ export const getStatusBadgeClass = (status: ReportStatus) => {
   if (status === 'New') return 'border-red-200 bg-red-100 text-red-800';
   if (status === 'In Progress') return 'border-amber-200 bg-amber-100 text-amber-800';
   return 'border-green-200 bg-green-100 text-green-800';
+};
+
+export const getFlaggedBadgeClass = (isFlagged?: boolean) => {
+  if (!isFlagged) return '';
+  return 'border-amber-200 bg-amber-100 text-amber-900';
+};
+
+export const getFlaggedReportRowClass = (isFlagged?: boolean) => {
+  if (!isFlagged) return '';
+  return 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500';
 };
 
 export const buildInitials = (name: string) => {

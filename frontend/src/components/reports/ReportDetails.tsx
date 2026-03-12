@@ -3,17 +3,24 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { CommentsSection } from './CommentsSection';
 import { CommentComposer } from './CommentComposer';
-import { formatReportTimestamp, getStatusBadgeClass } from './reportUtils';
+import { formatReportTimestamp, getFlaggedBadgeClass, getStatusBadgeClass } from './reportUtils';
 import type { Report, ReportComment } from './types';
 
 interface ReportDetailsProps {
   report: Report;
   comments: ReportComment[];
-  onAddComment: (reportId: string, body: string) => void;
+  onAddComment?: (reportId: string, body: string) => void;
   onClose: () => void;
+  allowCommentComposer?: boolean;
 }
 
-export function ReportDetails({ report, comments, onAddComment, onClose }: ReportDetailsProps) {
+export function ReportDetails({
+  report,
+  comments,
+  onAddComment,
+  onClose,
+  allowCommentComposer = true,
+}: ReportDetailsProps) {
   const reportId = report.id.toString();
   const teamLabel =
     report.team_context === 'away' && report.away_team
@@ -25,10 +32,15 @@ export function ReportDetails({ report, comments, onAddComment, onClose }: Repor
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <Label>Status</Label>
-          <div>
+          <div className="flex items-center gap-2">
             <Badge variant="outline" className={getStatusBadgeClass(report.status)}>
               {report.status}
             </Badge>
+            {report.gm_flagged && (
+              <Badge variant="outline" className={getFlaggedBadgeClass(report.gm_flagged)}>
+                Flagged
+              </Badge>
+            )}
           </div>
         </div>
         <div className="space-y-1">
@@ -53,7 +65,9 @@ export function ReportDetails({ report, comments, onAddComment, onClose }: Repor
       <CommentsSection comments={comments} />
 
       <div className="space-y-2">
-        <CommentComposer onSubmit={(body) => onAddComment(reportId, body)} />
+        {allowCommentComposer && onAddComment && (
+          <CommentComposer onSubmit={(body) => onAddComment(reportId, body)} />
+        )}
         <div className="flex justify-end">
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
