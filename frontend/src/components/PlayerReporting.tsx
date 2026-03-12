@@ -1,6 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { issuesApi } from '../services/api';
+import { issuesApi, teamsApi } from '../services/api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Label } from './ui/label';
@@ -9,21 +9,9 @@ import { Textarea } from './ui/textarea';
 
 type TeamContext = 'home' | 'away';
 
-const AWAY_TEAMS = [
-  'Lancaster Stormers',
-  'Long Island Ducks',
-  'York Revolution',
-  'Staten Island Ferry Hawks',
-  'Hagerstown Flying Boxcars',
-  'Gastonia Ghost Peppers',
-  'High Point Rockers',
-  'Lexington Legends',
-  'Southern Maryland Blue Crabs',
-  'Charleston Dirty Birds',
-];
-
 export function PlayerReporting() {
   const { user } = useAuth();
+  const [teams, setTeams] = useState<string[]>([]);
   const [teamContext, setTeamContext] = useState<TeamContext | null>(null);
   const [awayTeam, setAwayTeam] = useState('');
   const [description, setDescription] = useState('');
@@ -32,6 +20,12 @@ export function PlayerReporting() {
   const [descriptionError, setDescriptionError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
+
+  useEffect(() => {
+    teamsApi.getAllTeams()
+      .then(data => setTeams(data.map(t => t.team_name)))
+      .catch(console.error);
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -137,7 +131,7 @@ export function PlayerReporting() {
                       <SelectValue placeholder="Select away team" />
                     </SelectTrigger>
                     <SelectContent>
-                      {AWAY_TEAMS.map((team) => (
+                      {teams.map((team) => (
                         <SelectItem key={team} value={team}>
                           {team}
                         </SelectItem>
