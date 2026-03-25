@@ -1,4 +1,28 @@
 import { supabase } from '../../utils/supabase/client';
+import { z } from 'zod';
+
+const taskCategorySchema = z.enum([
+  'Medical & Safety',
+  'Equipment & Field Support',
+  'Laundry & Cleaning',
+  'Hygiene & Personal Care',
+  'Meals & Nutrition',
+  'Misc',
+]);
+
+const createTaskSchema = z.object({
+  task_name: z.string().min(1).max(255).nullable().optional(),
+  task_complete: z.boolean().nullable().optional(),
+  task_category: taskCategorySchema.nullable().optional(),
+  task_description: z.string().max(2000).nullable().optional(),
+  task_type: z.number().int().nullable().optional(),
+  task_date: z.string().nullable().optional(),
+  task_time: z.string().nullable().optional(),
+  is_repeating: z.boolean().default(false),
+  repeating_day: z.number().int().min(0).max(6).nullable().optional(),
+});
+
+const updateTaskSchema = createTaskSchema.partial();
 
 // Matches the PostgreSQL enum type
 export type TaskCategory =
@@ -37,6 +61,7 @@ export const taskApi = {
   },
 
   createTask: async (userId: number, data: Omit<Task, 'id' | 'created_at' | 'user_id'>): Promise<Task> => {
+    createTaskSchema.parse(data);
     const { data: result, error } = await supabase
       .from('task')
       .insert([{ ...data, user_id: userId }])
@@ -49,6 +74,7 @@ export const taskApi = {
   },
 
   updateTask: async (id: number, data: Partial<Omit<Task, 'id' | 'created_at' | 'user_id'>>): Promise<Task> => {
+    updateTaskSchema.parse(data);
     const { data: result, error } = await supabase
       .from('task')
       .update(data)

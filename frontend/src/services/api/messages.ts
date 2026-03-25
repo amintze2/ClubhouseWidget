@@ -1,5 +1,12 @@
 import { supabase } from '../../utils/supabase/client';
 import type { User } from './users';
+import { z } from 'zod';
+
+const sendMessageSchema = z.object({
+  content: z.string().min(1, 'Message cannot be empty').max(2000, 'Message cannot exceed 2000 characters'),
+  conversationId: z.string().uuid(),
+  senderUserId: z.number().int().positive(),
+});
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -156,6 +163,7 @@ export const messagesApi = {
     senderUserId: number,
     content: string
   ): Promise<Message> => {
+    sendMessageSchema.parse({ content, conversationId, senderUserId });
     const { data, error } = await supabase
       .from('messages')
       .insert({ conversation_id: conversationId, sender_user_id: senderUserId, content })
@@ -279,8 +287,9 @@ export const messagesApi = {
     if (error) throw new Error(error.message);
   },
 
-  // 3.8 Fetch all CMs across all teams (for contact picker)
-  getAllCMs: async (): Promise<CMUser[]> => {
+  // 3.8 Fetch all CMs across all teams (intentionally cross-team — required for
+  // the CM direct messaging feature). Protected by RLS: authenticated users only.
+  getAllCMsForMessaging: async (): Promise<CMUser[]> => {
     const { data, error } = await supabase
       .from('user')
       .select(`

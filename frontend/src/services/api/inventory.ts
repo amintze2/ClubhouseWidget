@@ -1,5 +1,18 @@
 import { supabase } from '../../utils/supabase/client';
 import type { TaskCategory } from './tasks';
+import { z } from 'zod';
+
+const inventoryWriteSchema = z.object({
+  meal_id: z.number().int().nullable().optional(),
+  inventory_type: z.string().nullable().optional(),
+  inventory_item: z.string().min(1).max(500).nullable().optional(),
+  current_stock: z.number().min(0).nullable().optional(),
+  required_stock: z.number().min(0).nullable().optional(),
+  unit: z.string().max(50).nullable().optional(),
+  purchase_link: z.string().url().nullable().optional(),
+  note: z.string().max(2000).nullable().optional(),
+  price_per_unit: z.number().min(0).nullable().optional(),
+});
 
 export interface Inventory {
   id: number;
@@ -12,7 +25,7 @@ export interface Inventory {
   unit: string | null;
   purchase_link: string | null;
   note: string | null;
-  price_per_unit: number | null;
+  price_per_unit: string | null; // numeric(10,2) — use string to preserve decimal precision
   created_at: string;
 }
 
@@ -28,17 +41,8 @@ export const inventoryApi = {
     return data || [];
   },
 
-  getAllInventory: async (): Promise<Inventory[]> => {
-    const { data, error } = await supabase
-      .from('inventory')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw new Error(error.message);
-    return data || [];
-  },
-
   createInventory: async (teamId: number, data: Omit<Inventory, 'id' | 'created_at' | 'team_id'>): Promise<Inventory> => {
+    inventoryWriteSchema.parse(data);
     const { data: result, error } = await supabase
       .from('inventory')
       .insert([{ ...data, team_id: teamId }])
@@ -51,6 +55,7 @@ export const inventoryApi = {
   },
 
   updateInventory: async (id: number, data: Partial<Omit<Inventory, 'id' | 'created_at' | 'team_id'>>): Promise<Inventory> => {
+    inventoryWriteSchema.partial().parse(data);
     const { data: result, error } = await supabase
       .from('inventory')
       .update(data)

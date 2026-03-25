@@ -22,6 +22,8 @@ export interface SluggerAuth {
   user: SluggerUser;
   /** Raw DB user record returned from /api/auth/bootstrap — held in memory only */
   sessionData: Record<string, any>;
+  /** Supabase session for RLS-enabled queries — held in memory only */
+  supabaseSession?: { access_token: string; refresh_token: string; expires_in: number };
 }
 
 export interface SluggerWidgetSDKOptions {
@@ -53,8 +55,8 @@ export class SluggerWidgetSDK {
   constructor(options: SluggerWidgetSDKOptions) {
     this.options = {
       allowedOrigins: [
-        'http://localhost:3000',
-        'http://slugger-alb-1518464736.us-east-2.elb.amazonaws.com',
+        // localhost only in development builds — excluded from production bundle
+        ...(import.meta.env.DEV ? ['http://localhost:3000'] : []),
         'https://alpb-analytics.com',
         'https://www.alpb-analytics.com',
       ],
@@ -85,7 +87,6 @@ export class SluggerWidgetSDK {
     setTimeout(() => {
       if (!this.auth) {
         const error = 'Authentication timeout - no token received from shell';
-        console.error('[SluggerSDK] Timeout:', error);
         this.options.onAuthError(error);
         this.readyReject(new Error(error));
       }
@@ -93,14 +94,9 @@ export class SluggerWidgetSDK {
   }
 
   private handleMessage(event: MessageEvent): void {
-    // Log every postMessage so origin mismatches and missing events are visible
-    if (event.data?.type?.startsWith?.('SLUGGER')) {
-      console.log('[SluggerSDK] postMessage received:', event.origin, event.data);
-    }
-
     if (!this.options.allowedOrigins.includes(event.origin)) {
-      if (event.data?.type === 'SLUGGER_AUTH') {
-        console.error('[SluggerSDK] SLUGGER_AUTH rejected — origin not allowed:', event.origin, '\nAllowed:', this.options.allowedOrigins);
+      if (import.meta.env.DEV && event.data?.type === 'SLUGGER_AUTH') {
+        console.error('[SluggerSDK] SLUGGER_AUTH rejected — origin not allowed:', event.origin);
       }
       return;
     }
@@ -110,7 +106,6 @@ export class SluggerWidgetSDK {
       // Don't await — fire-and-forget with internal error handling
       this.processAuth(event.data.payload).catch((err) => {
         const message = err instanceof Error ? err.message : 'Auth processing failed';
-        console.error('[SluggerSDK] processAuth failed:', message);
         this.options.onAuthError(message);
         this.readyReject(new Error(message));
       });
@@ -150,7 +145,7 @@ export class SluggerWidgetSDK {
       );
     }
 
-    const { sluggerUserId, user: sessionData } = result;
+    const { sluggerUserId, user: sessionData, session: supabaseSession } = result;
 
     this.auth = {
       user: {
@@ -160,6 +155,7 @@ export class SluggerWidgetSDK {
         lastName: sessionData.family_name ?? sessionData.user_name?.split(' ').slice(1).join(' '),
       },
       sessionData,
+      supabaseSession,
     };
 
     this.readyResolve(this.auth);

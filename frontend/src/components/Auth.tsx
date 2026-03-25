@@ -56,7 +56,6 @@ export function Auth({ onAuthSuccess }: AuthProps) {
       }
 
       if (data.user && data.session) {
-        console.log('Sign in successful for user:', data.user.id);
         const username = data.user.user_metadata?.username || 'User';
         const jobRole = data.user.user_metadata?.job_role || 'Staff';
         

@@ -6,6 +6,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, userApi, UserWithData, setSluggerSDK } from '../services/api';
 import { useSluggerAuth } from '../hooks/useSluggerAuth';
 import { SluggerUser, SluggerAuth } from '../services/slugger-widget-sdk';
+import { supabase } from '../utils/supabase/client';
 
 interface AuthContextType {
   user: User | null;
@@ -67,6 +68,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const loadUserFromSlugger = async (sluggerUser: SluggerUser, auth: SluggerAuth) => {
     try {
       setLoading(true);
+
+      // Activate the Supabase session so RLS policies are enforced for all
+      // subsequent client queries. The session is held in memory only.
+      if (auth.supabaseSession?.access_token) {
+        await supabase.auth.setSession({
+          access_token: auth.supabaseSession.access_token,
+          refresh_token: auth.supabaseSession.refresh_token,
+        });
+      }
+
       // The bootstrap endpoint already upserted and returned the DB user record.
       // Use it directly to skip a redundant Supabase lookup when available.
       const sessionData = auth.sessionData;
@@ -82,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUserData(fullUserData);
       }
     } catch (error) {
-      console.error('Failed to load user from SLUGGER:', error);
+      if (import.meta.env.DEV) console.error('Failed to load user from SLUGGER:', error);
     } finally {
       setLoading(false);
     }
@@ -100,7 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUserData(userData);
       }
     } catch (error) {
-      console.error('Failed to load user:', error);
+      if (import.meta.env.DEV) console.error('Failed to load user:', error);
       localStorage.removeItem('currentUserId');
       localStorage.removeItem('currentSluggerId');
     } finally {
@@ -132,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('currentUserId', loggedInUser.id.toString());
       localStorage.setItem('currentSluggerId', sluggerUserId);
     } catch (error) {
-      console.error('Login failed:', error);
+      if (import.meta.env.DEV) console.error('Login failed:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -153,7 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const fullUserData = await userApi.getUserWithData(user.id);
       setUserData(fullUserData);
     } catch (error) {
-      console.error('Failed to refresh user data:', error);
+      if (import.meta.env.DEV) console.error('Failed to refresh user data:', error);
       throw error;
     }
   };

@@ -27,7 +27,7 @@ export function NewConversationModal({
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      messagesApi.getAllCMs(),
+      messagesApi.getAllCMsForMessaging(),
       teamsApi.getAllTeams(),
     ]).then(([cms, ts]) => {
       setAllCMs(cms);
