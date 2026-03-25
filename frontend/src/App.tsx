@@ -11,7 +11,7 @@ import { GameSchedule } from './components/GameSchedule';
 import { TaskTemplates } from './components/TaskTemplates';
 import { ClubhouseInventory } from './components/ClubhouseInventory';
 import { RecurringTasks } from './components/RecurringTasks';
-import { Budget } from './components/Budget';
+import { BudgetView } from './components/budget/BudgetView';
 import { MealPlanning } from './components/MealPlanning';
 import { ManagerPlayerReports } from './components/ManagerPlayerReports';
 import { ManagerDirectMessages } from './components/ManagerDirectMessages';
@@ -235,7 +235,9 @@ export default function App() {
               />
             )}
             {activeView === 'messages' && <ManagerDirectMessages />}
-            {activeView === 'budget' && <Budget inventoryData={inventoryData} />}
+            {activeView === 'budget' && (
+              <BudgetView user={user} backendUser={backendUser} />
+            )}
             {activeView === 'manager_player_reports' && <ManagerPlayerReports />}
             {renderRoleContent(user.jobRole, activeView)}
           </main>
