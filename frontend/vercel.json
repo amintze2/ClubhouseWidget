@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install --include=dev",
-  "buildCommand": "vite build",
+  "buildCommand": "npx vite build",
   "headers": [
     {
       "source": "/(.*)",
