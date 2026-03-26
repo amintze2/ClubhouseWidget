@@ -9,18 +9,19 @@
 
 if (import.meta.env.DEV && typeof window !== 'undefined' && window.self === window.top) {
   setTimeout(() => {
+    // Pass ?mockUser=<slugger_user_id> in the URL to log in as a specific DB user.
+    // Defaults to 'test-user-123' if not specified.
+    const mockUserId = new URLSearchParams(window.location.search).get('mockUser') || 'test-user-123';
+    const bootstrapToken = `mock-${mockUserId}`;
+
     window.postMessage(
       {
         type: 'SLUGGER_AUTH',
-        payload: {
-          // The SDK checks payload.bootstrapToken first (new protocol).
-          // This value is recognized by the /api/auth/bootstrap dev bypass.
-          bootstrapToken: 'mock-bootstrap-token-test-user-123',
-        },
+        payload: { bootstrapToken },
       },
       '*'
     );
 
-    console.log('🔧 Mock SLUGGER bootstrap token sent (development only)');
+    console.log(`[mock-auth] Logging in as slugger_user_id: ${mockUserId}`);
   }, 100);
 }

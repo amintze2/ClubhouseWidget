@@ -57,17 +57,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // ── Dev bypass (ENABLE_MOCK_AUTH only — never set in production) ────────────
+  // Token format: "mock-<slugger_user_id>" — looks up that user in the DB.
+  // Usage: visit http://localhost:3000?mockUser=<slugger_user_id>
   if (process.env.ENABLE_MOCK_AUTH === 'true' && token.startsWith('mock-')) {
+    const mockSluggerUserId = token.slice('mock-'.length);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: existingUser } = await supabase
       .from('user')
       .select('*')
-      .eq('slugger_user_id', 'test-user-123')
+      .eq('slugger_user_id', mockSluggerUserId)
       .maybeSingle();
 
     const dbUser = existingUser ?? {
       id: 0,
-      slugger_user_id: 'test-user-123',
+      slugger_user_id: mockSluggerUserId,
       user_name: 'Test User',
       user_role: null,
       user_team: null,
@@ -75,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     const session = await signSupabaseJwt(dbUser.id, dbUser.user_team);
-    return res.status(200).json({ sluggerUserId: 'test-user-123', user: dbUser, session });
+    return res.status(200).json({ sluggerUserId: mockSluggerUserId, user: dbUser, session });
   }
 
   // ── Step 1: Validate bootstrap token ───────────────────────────────────────
