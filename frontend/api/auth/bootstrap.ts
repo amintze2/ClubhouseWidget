@@ -78,6 +78,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!sluggerRes.ok) {
+      const errBody = await sluggerRes.text().catch(() => '');
+      console.error('[bootstrap] Slugger API rejected token:', sluggerRes.status, errBody, 'URL:', `${SLUGGER_API_URL}/api/users/me`);
       return res.status(401).json({ error: 'Authentication failed' });
     }
     const json = await sluggerRes.json();
