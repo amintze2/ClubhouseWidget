@@ -2,6 +2,7 @@
 // - Reads Supabase URL and anon key from Vite env vars when available.
 // - Falls back to a URL constructed from the autop-generated projectId.
 // - Exports a singleton client used by services/api.ts.
+// - Supports injecting a custom JWT for RLS-enabled queries via setSupabaseAuthToken().
 import { createClient } from '@supabase/supabase-js@2';
 import { projectId } from './info';
 
@@ -23,8 +24,33 @@ const getSupabaseAnonKey = (): string => {
   return key;
 };
 
-// Create a singleton Supabase client instance
+// Mutable JWT for RLS-enabled queries. Set after bootstrap auth completes.
+let _authToken: string | null = null;
+
+export function setSupabaseAuthToken(jwt: string | null): void {
+  _authToken = jwt;
+}
+
+// Singleton Supabase client with a custom fetch that injects the current
+// auth JWT into every request, bypassing supabase.auth.setSession() which
+// requires a refresh_token and validates against Supabase Auth.
 export const supabase = createClient(
   getSupabaseUrl(),
-  getSupabaseAnonKey()
+  getSupabaseAnonKey(),
+  {
+    global: {
+      fetch: (url, options = {}) => {
+        if (_authToken) {
+          const headers = new Headers(options.headers);
+          headers.set('Authorization', `Bearer ${_authToken}`);
+          return fetch(url, { ...options, headers });
+        }
+        return fetch(url, options);
+      },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  }
 );

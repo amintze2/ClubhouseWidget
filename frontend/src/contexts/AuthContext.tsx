@@ -6,7 +6,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, userApi, UserWithData, setSluggerSDK } from '../services/api';
 import { useSluggerAuth } from '../hooks/useSluggerAuth';
 import { SluggerUser, SluggerAuth } from '../services/slugger-widget-sdk';
-import { supabase } from '../utils/supabase/client';
+import { supabase, setSupabaseAuthToken } from '../utils/supabase/client';
 
 interface AuthContextType {
   user: User | null;
@@ -31,8 +31,9 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Check if running in iframe (SLUGGER shell)
+// Check if running in iframe (SLUGGER shell) or in dev mock mode
 const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+const useSluggerFlow = isInIframe || import.meta.env.DEV;
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -51,16 +52,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Load user from SLUGGER when authenticated
   useEffect(() => {
-    if (isInIframe && sluggerUser && sluggerAuth && sdk && !sluggerLoading) {
+    if (useSluggerFlow && sluggerUser && sluggerAuth && sdk && !sluggerLoading) {
       loadUserFromSlugger(sluggerUser, sluggerAuth);
-    } else if (!isInIframe) {
-      // Not in iframe - use manual login
+    } else if (!useSluggerFlow) {
+      // Not in iframe and not dev - use manual login
       loadUserFromStorage();
-    } else if (isInIframe && sluggerError) {
-      // Auth error in iframe - must check before the "still loading" branch
+    } else if (useSluggerFlow && sluggerError) {
+      // Auth error - must check before the "still loading" branch
       setLoading(false);
-    } else if (isInIframe && !sluggerLoading && !sluggerUser) {
-      // In iframe but no auth yet - still loading
+    } else if (useSluggerFlow && !sluggerLoading && !sluggerUser) {
+      // Slugger flow but no auth yet - still loading
       setLoading(true);
     }
   }, [sluggerUser, sluggerAuth, sluggerLoading, sluggerError, sdk]);
@@ -69,13 +70,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
 
-      // Activate the Supabase session so RLS policies are enforced for all
-      // subsequent client queries. The session is held in memory only.
+      // Inject the JWT so RLS policies are enforced for all subsequent
+      // client queries. Bypasses supabase.auth.setSession() which requires
+      // a refresh_token and validates against Supabase Auth.
       if (auth.supabaseSession?.access_token) {
-        await supabase.auth.setSession({
-          access_token: auth.supabaseSession.access_token,
-          refresh_token: auth.supabaseSession.refresh_token,
-        });
+        setSupabaseAuthToken(auth.supabaseSession.access_token);
       }
 
       // The bootstrap endpoint already upserted and returned the DB user record.
@@ -119,9 +118,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Load user from localStorage on mount (only if not in iframe)
+  // Load user from localStorage on mount (only if not using slugger flow)
   useEffect(() => {
-    if (!isInIframe) {
+    if (!useSluggerFlow) {
       loadUserFromStorage();
     }
   }, []);
@@ -151,6 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    setSupabaseAuthToken(null);
     setUser(null);
     setUserData(null);
     localStorage.removeItem('currentUserId');
@@ -170,7 +170,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Combine loading states
-  const combinedLoading = isInIframe ? (sluggerLoading || loading) : loading;
+  const combinedLoading = useSluggerFlow ? (sluggerLoading || loading) : loading;
 
   return (
     <AuthContext.Provider value={{ user, userData, loading: combinedLoading, login, logout, refreshUserData }}>

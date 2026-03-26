@@ -127,18 +127,25 @@ CREATE POLICY "conversations: insert"
 -- ─────────────────────────────────────────────────────────────
 ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
 
+-- Helper function to get the current user's conversation IDs without
+-- triggering RLS recursion on conversation_participants itself.
+CREATE OR REPLACE FUNCTION get_my_conversation_ids()
+RETURNS SETOF uuid
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT conversation_id
+  FROM public.conversation_participants
+  WHERE user_id = (auth.jwt() ->> 'sub')::bigint
+$$;
+
 -- Users can read participants for conversations they're in
 CREATE POLICY "conversation_participants: select own"
   ON public.conversation_participants
   FOR SELECT
   TO authenticated
-  USING (
-    conversation_id IN (
-      SELECT conversation_id
-      FROM public.conversation_participants
-      WHERE user_id = (auth.jwt() ->> 'sub')::bigint
-    )
-  );
+  USING (conversation_id IN (SELECT get_my_conversation_ids()));
 
 -- Users can insert participants (when creating conversations)
 CREATE POLICY "conversation_participants: insert"
