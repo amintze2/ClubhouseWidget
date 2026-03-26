@@ -72,6 +72,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // ── Step 1: Validate bootstrap token with Slugger API ──────────────────────
+  // Temp debug: decode JWT header to identify token type (header is public, not sensitive)
+  try {
+    const headerB64 = token.split('.')[0];
+    const header = JSON.parse(Buffer.from(headerB64, 'base64').toString());
+    console.log('[bootstrap] token header:', JSON.stringify(header), '| url:', `${SLUGGER_API_URL}/api/users/me`);
+  } catch {
+    console.log('[bootstrap] token does not appear to be a JWT | url:', `${SLUGGER_API_URL}/api/users/me`);
+  }
+
   let sluggerUser: Record<string, any>;
   try {
     const sluggerRes = await fetch(`${SLUGGER_API_URL}/api/users/me`, {
@@ -79,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     if (!sluggerRes.ok) {
       const errBody = await sluggerRes.text().catch(() => '');
-      console.error('[bootstrap] Slugger API rejected token:', sluggerRes.status, errBody, 'URL:', `${SLUGGER_API_URL}/api/users/me`);
+      console.log('[bootstrap] Slugger API rejected token:', sluggerRes.status, '| body:', errBody);
       return res.status(401).json({ error: 'Authentication failed' });
     }
     const json = await sluggerRes.json();
