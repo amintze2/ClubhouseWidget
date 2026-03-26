@@ -7,7 +7,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://alpb-analytics.com https://www.alpb-analytics.com https://slugger-alb-1518464736.us-east-2.elb.amazonaws.com; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://esmuegorbzltpkpmnxzu.supabase.co https://alpb-analytics.com https://www.alpb-analytics.com"
+          "value": "frame-ancestors 'self' https://alpb-analytics.com https://www.alpb-analytics.com https://slugger-alb-1518464736.us-east-2.elb.amazonaws.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://esmuegorbzltpkpmnxzu.supabase.co https://alpb-analytics.com https://www.alpb-analytics.com"
         },
         {
           "key": "X-Content-Type-Options",
