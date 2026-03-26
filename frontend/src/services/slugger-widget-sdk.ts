@@ -59,6 +59,8 @@ export class SluggerWidgetSDK {
         ...(import.meta.env.DEV ? ['http://localhost:3000'] : []),
         'https://alpb-analytics.com',
         'https://www.alpb-analytics.com',
+        // Slugger staging/dev ALB origin
+        'https://slugger-alb-1518464736.us-east-2.elb.amazonaws.com',
       ],
       backendBaseUrl: '',
       onAuthReady: () => {},
