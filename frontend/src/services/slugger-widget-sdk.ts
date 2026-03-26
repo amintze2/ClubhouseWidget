@@ -83,22 +83,7 @@ export class SluggerWidgetSDK {
 
   private init(): void {
     window.addEventListener('message', this.messageHandler);
-
-    // Check for alpb_token URL param — Slugger embeds the widget with
-    // ?alpb_token=<token> in the iframe src. Read it and strip it from the
-    // URL immediately so it doesn't appear in browser history or referrer headers.
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('alpb_token');
-    if (urlToken) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
-      this.processAuth({ bootstrapToken: urlToken }).catch((err) => {
-        const message = err instanceof Error ? err.message : 'Auth processing failed';
-        this.options.onAuthError(message);
-        this.readyReject(new Error(message));
-      });
-    } else {
-      this.sendReady();
-    }
+    this.sendReady();
 
     // 10-second timeout if no auth received
     setTimeout(() => {
@@ -130,9 +115,6 @@ export class SluggerWidgetSDK {
   }
 
   private async processAuth(payload: Record<string, any>): Promise<void> {
-    // Prevent double-processing if both URL param and postMessage fire
-    if (this.auth) return;
-
     // Accept 'bootstrapToken' (new Slugger protocol) or fall back to 'accessToken'
     // (for backward-compat while WIDGET-AUTH.md is pending). Narrow once confirmed.
     const bootstrapToken: string | undefined =
