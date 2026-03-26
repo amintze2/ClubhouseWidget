@@ -42,7 +42,7 @@ export default function App() {
   const user = useMemo<AppUser | null>(() => {
     if (!backendUser) return null;
     return {
-      username: backendUser.user_name || 'User',
+      username: (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(backendUser.user_name || '')) ? 'Player' : (backendUser.user_name || 'User'),
       jobRole: getAppJobRole(backendUser.user_role),
       team: backendUser.team_name || undefined,
     };

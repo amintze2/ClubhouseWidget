@@ -53,7 +53,11 @@ function SelectedItemChip({ item, onRemove }: SelectedItemChipProps) {
 export function PlayerInfo() {
   const { user } = useAuth();
 
-  const playerName = useMemo(() => user?.user_name?.trim() || '', [user?.user_name]);
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const playerName = useMemo(() => {
+    const name = user?.user_name?.trim() || '';
+    return UUID_REGEX.test(name) ? '' : name;
+  }, [user?.user_name]);
   const headerText = playerName ? `Welcome ${playerName}` : 'Welcome Player';
 
   const [preferredName, setPreferredName] = useState('');
