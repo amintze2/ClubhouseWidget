@@ -4,9 +4,16 @@
 // for the client (enabling RLS), and returns our own session data.
 // The bootstrap token must NEVER be stored client-side — it is forwarded here
 // immediately and consumed once.
+//
+// Auth strategy:
+//   1. Try Slugger API (/api/users/me) with the token as Bearer — works when
+//      Slugger sends their own HS256 bootstrap token (per WIDGET-AUTH.md spec).
+//   2. If Slugger API rejects it, try direct Cognito JWT validation — handles
+//      the case where Slugger's [WidgetIframe] sends a Cognito RS256 token
+//      instead of a Slugger-issued bootstrap token.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { SignJWT } from 'jose';
+import { SignJWT, createRemoteJWKSet, jwtVerify } from 'jose';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
@@ -71,29 +78,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ sluggerUserId: 'test-user-123', user: dbUser, session });
   }
 
-  // ── Step 1: Validate bootstrap token with Slugger API ──────────────────────
-  // Temp debug: decode JWT header to identify token type (header is public, not sensitive)
-  try {
-    const headerB64 = token.split('.')[0];
-    const header = JSON.parse(Buffer.from(headerB64, 'base64').toString());
-    console.log('[bootstrap] token header:', JSON.stringify(header), '| url:', `${SLUGGER_API_URL}/api/users/me`);
-  } catch {
-    console.log('[bootstrap] token does not appear to be a JWT | url:', `${SLUGGER_API_URL}/api/users/me`);
-  }
+  // ── Step 1: Validate bootstrap token ───────────────────────────────────────
+  // Try Slugger API first; fall back to direct Cognito JWT validation.
+  let sluggerUser: Record<string, any> | null = null;
 
-  let sluggerUser: Record<string, any>;
+  // 1a. Try Slugger's /api/users/me endpoint (works with Slugger-issued HS256 tokens)
   try {
     const sluggerRes = await fetch(`${SLUGGER_API_URL}/api/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!sluggerRes.ok) {
+    if (sluggerRes.ok) {
+      const json = await sluggerRes.json();
+      sluggerUser = json?.data ?? json;
+    } else {
       const errBody = await sluggerRes.text().catch(() => '');
       console.log('[bootstrap] Slugger API rejected token:', sluggerRes.status, '| body:', errBody);
-      return res.status(401).json({ error: 'Authentication failed' });
     }
-    const json = await sluggerRes.json();
-    sluggerUser = json?.data ?? json;
-  } catch {
+  } catch (e) {
+    console.log('[bootstrap] Slugger API unreachable:', e instanceof Error ? e.message : e);
+  }
+
+  // 1b. Fallback: validate as Cognito RS256 JWT directly
+  // Handles the case where Slugger's WidgetIframe sends a Cognito access token
+  // instead of a Slugger-issued bootstrap token.
+  if (!sluggerUser) {
+    sluggerUser = await validateCognitoJwt(token);
+    if (sluggerUser) {
+      console.log('[bootstrap] Authenticated via Cognito JWT fallback, sub:', sluggerUser.id);
+    }
+  }
+
+  if (!sluggerUser) {
     return res.status(401).json({ error: 'Authentication failed' });
   }
 
@@ -145,7 +160,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // ── Step 4: Sign a Supabase-compatible JWT for the client ───────────────────
-  // The client uses this to call supabase.auth.setSession(), which enables RLS.
   const session = await signSupabaseJwt(dbUser!.id, dbUser!.user_team);
 
   return res.status(200).json({
@@ -153,6 +167,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     user: { ...dbUser, team_name: teamName },
     session,
   });
+}
+
+/**
+ * Validates a Cognito RS256 JWT by fetching the user pool's public JWKS and
+ * verifying the signature. Returns a user-like object if valid, null otherwise.
+ *
+ * This handles the case where Slugger sends a Cognito access token as the
+ * bootstrap token instead of a Slugger-issued HS256 token.
+ */
+async function validateCognitoJwt(token: string): Promise<Record<string, any> | null> {
+  try {
+    // Decode payload without verification to extract issuer
+    const [, payloadB64] = token.split('.');
+    if (!payloadB64) return null;
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString()) as Record<string, any>;
+    const iss: string = payload.iss ?? '';
+
+    // Only accept AWS Cognito issuers
+    if (!iss.match(/^https:\/\/cognito-idp\.[a-z0-9-]+\.amazonaws\.com\/[a-zA-Z0-9_-]+$/)) {
+      return null;
+    }
+
+    // Verify signature using Cognito's public JWKS
+    const JWKS = createRemoteJWKSet(new URL(`${iss}/.well-known/jwks.json`));
+    const { payload: verified } = await jwtVerify(token, JWKS, { issuer: iss });
+
+    const sub = String(verified.sub ?? '');
+    if (!sub) return null;
+
+    // Map available Cognito claims to the shape we need.
+    // Access tokens typically have username; id tokens have email/name.
+    const username = String(
+      verified['cognito:username'] ?? verified['username'] ?? verified['email'] ?? sub
+    );
+
+    return {
+      id: sub,
+      email: (verified['email'] as string | undefined),
+      firstName: (verified['given_name'] as string | undefined) ?? username,
+      lastName: (verified['family_name'] as string | undefined),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -168,8 +226,6 @@ async function signSupabaseJwt(
   teamId: number | null
 ): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
   if (!SUPABASE_JWT_SECRET) {
-    // If JWT secret not configured, return empty session (RLS won't be enforced)
-    // but app still works in degraded mode
     return { access_token: '', refresh_token: '', expires_in: 0 };
   }
 
