@@ -223,6 +223,19 @@ async function validateCognitoJwt(token: string): Promise<Record<string, any> | 
     const issMatch = iss.match(/^https:\/\/cognito-idp\.([a-z0-9-]+)\.amazonaws\.com\/[a-zA-Z0-9_-]+$/);
     if (!issMatch) return null;
 
+    // Log token claims so we can see what Slugger is actually sending
+    console.log('[bootstrap] Cognito token claims:', JSON.stringify({
+      token_use: payload.token_use,
+      sub: payload.sub,
+      'cognito:username': payload['cognito:username'],
+      username: payload.username,
+      email: payload.email,
+      given_name: payload.given_name,
+      family_name: payload.family_name,
+      exp: payload.exp,
+      iat: payload.iat,
+    }));
+
     // Verify signature using Cognito's public JWKS
     const JWKS = createRemoteJWKSet(new URL(`${iss}/.well-known/jwks.json`));
     const { payload: verified } = await jwtVerify(token, JWKS, { issuer: iss });
