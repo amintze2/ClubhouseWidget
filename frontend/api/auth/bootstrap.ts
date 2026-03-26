@@ -135,6 +135,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (existing) {
     dbUser = existing;
+    // Backfill: if the stored name is still the raw UUID fallback and we now have a real name, update it
+    if (existing.user_name === sluggerUserId && userName !== sluggerUserId) {
+      await supabase.from('user').update({ user_name: userName }).eq('id', existing.id);
+      dbUser = { ...existing, user_name: userName };
+    }
   } else {
     const { data: created, error: insertError } = await supabase
       .from('user')
@@ -170,11 +175,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /**
+ * Calls Cognito's GetUser endpoint to retrieve full user profile attributes.
+ * Requires only the access token — no AWS credentials needed.
+ * Returns a flat attribute map (e.g. { given_name: 'John', email: '...' }) or null on failure.
+ */
+async function fetchCognitoUserAttributes(
+  token: string,
+  region: string
+): Promise<Record<string, string> | null> {
+  try {
+    const res = await fetch(`https://cognito-idp.${region}.amazonaws.com/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'AmazonCognitoIdentityProviderService.GetUser',
+      },
+      body: JSON.stringify({ AccessToken: token }),
+    });
+    if (!res.ok) {
+      console.log('[bootstrap] Cognito GetUser failed:', res.status);
+      return null;
+    }
+    const data = await res.json() as { UserAttributes?: Array<{ Name: string; Value: string }> };
+    if (!Array.isArray(data.UserAttributes)) return null;
+    return Object.fromEntries(data.UserAttributes.map(({ Name, Value }) => [Name, Value]));
+  } catch (e) {
+    console.log('[bootstrap] Cognito GetUser error:', e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/**
  * Validates a Cognito RS256 JWT by fetching the user pool's public JWKS and
- * verifying the signature. Returns a user-like object if valid, null otherwise.
- *
- * This handles the case where Slugger sends a Cognito access token as the
- * bootstrap token instead of a Slugger-issued HS256 token.
+ * verifying the signature. After successful validation, calls GetUser to fetch
+ * the full profile (name, email) since access tokens carry only sub/username.
+ * Returns a user-like object if valid, null otherwise.
  */
 async function validateCognitoJwt(token: string): Promise<Record<string, any> | null> {
   try {
@@ -184,10 +219,9 @@ async function validateCognitoJwt(token: string): Promise<Record<string, any> | 
     const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString()) as Record<string, any>;
     const iss: string = payload.iss ?? '';
 
-    // Only accept AWS Cognito issuers
-    if (!iss.match(/^https:\/\/cognito-idp\.[a-z0-9-]+\.amazonaws\.com\/[a-zA-Z0-9_-]+$/)) {
-      return null;
-    }
+    // Only accept AWS Cognito issuers; capture region for GetUser call
+    const issMatch = iss.match(/^https:\/\/cognito-idp\.([a-z0-9-]+)\.amazonaws\.com\/[a-zA-Z0-9_-]+$/);
+    if (!issMatch) return null;
 
     // Verify signature using Cognito's public JWKS
     const JWKS = createRemoteJWKSet(new URL(`${iss}/.well-known/jwks.json`));
@@ -196,18 +230,23 @@ async function validateCognitoJwt(token: string): Promise<Record<string, any> | 
     const sub = String(verified.sub ?? '');
     if (!sub) return null;
 
-    // Map available Cognito claims to the shape we need.
-    // Access tokens typically have username; id tokens have email/name.
+    // Fetch full profile — access tokens don't include name/email claims
+    const region = issMatch[1];
+    const attrs = await fetchCognitoUserAttributes(token, region);
+
     const username = String(
       verified['cognito:username'] ?? verified['username'] ?? verified['email'] ?? sub
     );
 
-    return {
-      id: sub,
-      email: (verified['email'] as string | undefined),
-      firstName: (verified['given_name'] as string | undefined) ?? username,
-      lastName: (verified['family_name'] as string | undefined),
-    };
+    const firstName = attrs?.['given_name'] ?? (verified['given_name'] as string | undefined) ?? username;
+    const lastName = attrs?.['family_name'] ?? (verified['family_name'] as string | undefined);
+    const email = attrs?.['email'] ?? (verified['email'] as string | undefined);
+
+    if (attrs) {
+      console.log('[bootstrap] Cognito GetUser resolved name:', firstName, lastName ?? '');
+    }
+
+    return { id: sub, email, firstName, lastName };
   } catch {
     return null;
   }
