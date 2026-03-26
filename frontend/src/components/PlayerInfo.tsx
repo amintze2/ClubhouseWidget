@@ -121,20 +121,35 @@ export function PlayerInfo() {
     setSaveMessage('');
     setIsSaving(true);
 
-    const payload = {
-      preferredName: preferredName.trim(),
-      selectedDietaryItems,
-      otherDetails: otherDetails.trim(),
-      submittedAt: new Date().toISOString(),
-    };
+    if (!user?.id) {
+      setSaveMessage('Error: not logged in.');
+      setIsSaving(false);
+      return;
+    }
 
-    // TODO: send player info to Postgres via AWS API; clubhouse managers will use this info.
-    console.log('Player info payload:', payload);
+    try {
+      const res = await fetch('/api/player/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          preferredName: preferredName.trim(),
+          dietaryItems: selectedDietaryItems,
+          otherDetails: otherDetails.trim(),
+        }),
+      });
 
-    await new Promise((resolve) => setTimeout(resolve, 700));
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? 'Save failed');
+      }
 
-    setIsSaving(false);
-    setSaveMessage('Saved. Clubhouse managers can now use this information.');
+      setSaveMessage('Saved. Clubhouse managers can now use this information.');
+    } catch (err) {
+      setSaveMessage(err instanceof Error ? err.message : 'Save failed. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
