@@ -15,7 +15,6 @@ import { Budget } from './components/Budget';
 import { MealPlanning } from './components/MealPlanning';
 import { ManagerPlayerReports } from './components/ManagerPlayerReports';
 import { ManagerDirectMessages } from './components/ManagerDirectMessages';
-import { Login } from './components/Login';
 import { useAuth } from './contexts/AuthContext';
 import { MessagingProvider } from './contexts/MessagingContext';
 import { RoleSidebar } from './components/RoleSidebar';
@@ -36,7 +35,7 @@ export type { Task };
 const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
 
 export default function App() {
-  const { user: backendUser, userData, loading: authLoading, logout, refreshUserData } = useAuth();
+  const { user: backendUser, userData, loading: authLoading, refreshUserData } = useAuth();
 
   // Derive frontend user from backend user — no separate state needed
   const user = useMemo<AppUser | null>(() => {
@@ -114,7 +113,6 @@ export default function App() {
         </div>
       );
     }
-    if (!isInIframe) return <Login />;
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -135,7 +133,7 @@ export default function App() {
           user={user}
           activeView={activeView}
           onSelectView={(view) => setActiveView(view as View)}
-          onSignOut={logout}
+
         />
 
         <div className="flex min-h-0 flex-1 flex-col">

@@ -1,7 +1,6 @@
 import type React from 'react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter } from './ui/sidebar';
-import { ClipboardList, LogOut } from 'lucide-react';
-import { Button } from './ui/button';
+import { ClipboardList } from 'lucide-react';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { getMenuItemsForRole } from './menus/roleMenus';
 import { useMessaging } from '../contexts/MessagingContext';
@@ -24,7 +23,6 @@ interface RoleSidebarProps {
   user: RoleSidebarUser;
   activeView: RoleSidebarView;
   onSelectView: (view: RoleSidebarView) => void;
-  onSignOut: () => void;
 }
 
 const roleTitle = (jobRole: string) => {
@@ -43,7 +41,6 @@ export function RoleSidebar({
   user,
   activeView,
   onSelectView,
-  onSignOut,
 }: RoleSidebarProps) {
   const menuItems = getMenuItemsForRole(user.jobRole);
   const { totalUnread } = useMessaging();
@@ -98,14 +95,6 @@ export function RoleSidebar({
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={onSignOut}
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
-        </Button>
       </SidebarFooter>
     </Sidebar>
   );
