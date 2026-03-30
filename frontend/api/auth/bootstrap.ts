@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const { token } = req.body ?? {};
+  const { token, sluggerUser: payloadUser } = req.body ?? {};
   if (!token || typeof token !== 'string') {
     return res.status(400).json({ error: 'token is required' });
   }
@@ -82,10 +82,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // ── Step 1: Validate bootstrap token ───────────────────────────────────────
-  // Try Slugger API first; fall back to direct Cognito JWT validation.
+  // Priority: Slugger API → payload.user forwarded from postMessage → Cognito JWT fallback
   let sluggerUser: Record<string, any> | null = null;
 
-  // 1a. Try Slugger's /api/users/me endpoint (works with Slugger-issued HS256 tokens)
+  // 1a. Slugger's /api/users/me — the primary path now that they send HS256 tokens
   try {
     const sluggerRes = await fetch(`${SLUGGER_API_URL}/api/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -93,22 +93,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (sluggerRes.ok) {
       const json = await sluggerRes.json();
       sluggerUser = json?.data ?? json;
-    } else {
-      const errBody = await sluggerRes.text().catch(() => '');
-      console.log('[bootstrap] Slugger API rejected token:', sluggerRes.status, '| body:', errBody);
     }
-  } catch (e) {
-    console.log('[bootstrap] Slugger API unreachable:', e instanceof Error ? e.message : e);
+  } catch {
+    // fall through to next option
   }
 
-  // 1b. Fallback: validate as Cognito RS256 JWT directly
-  // Handles the case where Slugger's WidgetIframe sends a Cognito access token
-  // instead of a Slugger-issued bootstrap token.
+  // 1b. payload.user forwarded from the SLUGGER_AUTH postMessage
+  // Slugger now includes this directly so we can use it when /api/users/me is unavailable
+  if (!sluggerUser && payloadUser && typeof payloadUser.id !== 'undefined') {
+    sluggerUser = payloadUser;
+  }
+
+  // 1c. Last resort: validate as Cognito RS256 JWT directly
   if (!sluggerUser) {
     sluggerUser = await validateCognitoJwt(token);
-    if (sluggerUser) {
-      console.log('[bootstrap] Authenticated via Cognito JWT fallback, sub:', sluggerUser.id);
-    }
   }
 
   if (!sluggerUser) {
@@ -136,9 +134,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .eq('slugger_user_id', sluggerUserId)
     .maybeSingle();
 
+  // Slugger-supplied team name (comes from payload.user.teamName)
+  const sluggerTeamName: string | null = sluggerUser.teamName ?? null;
+
   if (existing) {
     dbUser = existing;
-    // Backfill: if the stored name is still the raw UUID fallback and we now have a real name, update it
+    // Backfill name if it's still the raw UUID fallback and we now have a real name
     if (existing.user_name === sluggerUserId && userName !== sluggerUserId) {
       await supabase.from('user').update({ user_name: userName }).eq('id', existing.id);
       dbUser = { ...existing, user_name: userName };
@@ -157,8 +158,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // ── Step 3: Resolve team name ───────────────────────────────────────────────
-  let teamName: string | null = null;
-  if (dbUser?.user_team) {
+  // Prefer Slugger-supplied teamName; fall back to our own teams table lookup
+  let teamName: string | null = sluggerTeamName;
+  if (!teamName && dbUser?.user_team) {
     const { data: team } = await supabase
       .from('teams')
       .select('team_name')
@@ -226,19 +228,6 @@ async function validateCognitoJwt(token: string): Promise<Record<string, any> | 
     const issMatch = iss.match(/^https:\/\/cognito-idp\.([a-z0-9-]+)\.amazonaws\.com\/[a-zA-Z0-9_-]+$/);
     if (!issMatch) return null;
 
-    // Log token claims so we can see what Slugger is actually sending
-    console.log('[bootstrap] Cognito token claims:', JSON.stringify({
-      token_use: payload.token_use,
-      sub: payload.sub,
-      'cognito:username': payload['cognito:username'],
-      username: payload.username,
-      email: payload.email,
-      given_name: payload.given_name,
-      family_name: payload.family_name,
-      exp: payload.exp,
-      iat: payload.iat,
-    }));
-
     // Verify signature using Cognito's public JWKS
     const JWKS = createRemoteJWKSet(new URL(`${iss}/.well-known/jwks.json`));
     const { payload: verified } = await jwtVerify(token, JWKS, { issuer: iss });
@@ -257,10 +246,6 @@ async function validateCognitoJwt(token: string): Promise<Record<string, any> | 
     const firstName = attrs?.['given_name'] ?? (verified['given_name'] as string | undefined) ?? username;
     const lastName = attrs?.['family_name'] ?? (verified['family_name'] as string | undefined);
     const email = attrs?.['email'] ?? (verified['email'] as string | undefined);
-
-    if (attrs) {
-      console.log('[bootstrap] Cognito GetUser resolved name:', firstName, lastName ?? '');
-    }
 
     return { id: sub, email, firstName, lastName };
   } catch {

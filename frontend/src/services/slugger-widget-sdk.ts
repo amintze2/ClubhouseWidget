@@ -125,6 +125,8 @@ export class SluggerWidgetSDK {
     }
 
     // Forward the bootstrap token to our backend immediately — never store it.
+    // Also forward payload.user (now included by Slugger) as supplementary data
+    // so our backend can use it if /api/users/me is temporarily unavailable.
     const endpoint = `${this.options.backendBaseUrl}/api/auth/bootstrap`;
     let result: { sluggerUserId: string; user: Record<string, any> };
 
@@ -132,7 +134,7 @@ export class SluggerWidgetSDK {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: bootstrapToken }),
+        body: JSON.stringify({ token: bootstrapToken, sluggerUser: payload?.user ?? null }),
       });
 
       if (!response.ok) {
