@@ -93,13 +93,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (sluggerRes.ok) {
       const json = await sluggerRes.json();
       sluggerUser = json?.data ?? json;
+      console.log('[bootstrap] /api/users/me response:', JSON.stringify(sluggerUser));
+    } else {
+      console.log('[bootstrap] /api/users/me status:', sluggerRes.status);
     }
-  } catch {
-    // fall through to next option
+  } catch (e) {
+    console.log('[bootstrap] /api/users/me unreachable:', e instanceof Error ? e.message : e);
   }
 
   // 1b. payload.user forwarded from the SLUGGER_AUTH postMessage
-  // Slugger now includes this directly so we can use it when /api/users/me is unavailable
+  console.log('[bootstrap] payload.user from postMessage:', JSON.stringify(payloadUser));
   if (!sluggerUser && payloadUser && typeof payloadUser.id !== 'undefined') {
     sluggerUser = payloadUser;
   }
