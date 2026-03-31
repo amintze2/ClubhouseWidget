@@ -115,18 +115,16 @@ export class SluggerWidgetSDK {
   }
 
   private async processAuth(payload: Record<string, any>): Promise<void> {
-    // Accept 'bootstrapToken' (new Slugger protocol) or fall back to 'accessToken'
-    // (for backward-compat while WIDGET-AUTH.md is pending). Narrow once confirmed.
     const bootstrapToken: string | undefined =
       payload?.bootstrapToken ?? payload?.accessToken;
 
-    if (!bootstrapToken) {
-      throw new Error('No bootstrap token found in SLUGGER_AUTH payload');
+    // Require either a bootstrap token or a user object in the payload
+    if (!bootstrapToken && (!payload?.user || typeof payload.user.id === 'undefined')) {
+      throw new Error('No authentication data found in SLUGGER_AUTH payload');
     }
 
-    // Forward the bootstrap token to our backend immediately — never store it.
-    // Also forward payload.user (now included by Slugger) as supplementary data
-    // so our backend can use it if /api/users/me is temporarily unavailable.
+    // Forward to our backend. If Slugger's widget-token endpoint is down (500),
+    // bootstrapToken will be absent — bootstrap falls back to payload.user directly.
     const endpoint = `${this.options.backendBaseUrl}/api/auth/bootstrap`;
     let result: { sluggerUserId: string; user: Record<string, any> };
 
@@ -134,7 +132,7 @@ export class SluggerWidgetSDK {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: bootstrapToken, sluggerUser: payload?.user ?? null }),
+        body: JSON.stringify({ token: bootstrapToken ?? null, sluggerUser: payload?.user ?? null }),
       });
 
       if (!response.ok) {

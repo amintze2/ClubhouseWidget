@@ -52,14 +52,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const { token, sluggerUser: payloadUser } = req.body ?? {};
-  if (!token || typeof token !== 'string') {
-    return res.status(400).json({ error: 'token is required' });
+  const hasToken = token && typeof token === 'string';
+  const hasPayloadUser = payloadUser && typeof payloadUser.id !== 'undefined';
+
+  if (!hasToken && !hasPayloadUser) {
+    return res.status(400).json({ error: 'token or user payload is required' });
   }
 
   // ── Dev bypass (ENABLE_MOCK_AUTH only — never set in production) ────────────
   // Token format: "mock-<slugger_user_id>" — looks up that user in the DB.
   // Usage: visit http://localhost:3000?mockUser=<slugger_user_id>
-  if (process.env.ENABLE_MOCK_AUTH === 'true' && token.startsWith('mock-')) {
+  if (process.env.ENABLE_MOCK_AUTH === 'true' && hasToken && token.startsWith('mock-')) {
     const mockSluggerUserId = token.slice('mock-'.length);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: existingUser } = await supabase
@@ -85,30 +88,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Priority: Slugger API → payload.user forwarded from postMessage → Cognito JWT fallback
   let sluggerUser: Record<string, any> | null = null;
 
-  // 1a. Slugger's /api/users/me — the primary path now that they send HS256 tokens
-  try {
-    const sluggerRes = await fetch(`${SLUGGER_API_URL}/api/users/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (sluggerRes.ok) {
-      const json = await sluggerRes.json();
-      sluggerUser = json?.data ?? json;
-      console.log('[bootstrap] /api/users/me response:', JSON.stringify(sluggerUser));
-    } else {
-      console.log('[bootstrap] /api/users/me status:', sluggerRes.status);
+  // 1a. Slugger's /api/users/me — only possible when a token is present
+  if (hasToken) {
+    try {
+      const sluggerRes = await fetch(`${SLUGGER_API_URL}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (sluggerRes.ok) {
+        const json = await sluggerRes.json();
+        sluggerUser = json?.data ?? json;
+        console.log('[bootstrap] /api/users/me response:', JSON.stringify(sluggerUser));
+      } else {
+        console.log('[bootstrap] /api/users/me status:', sluggerRes.status);
+      }
+    } catch (e) {
+      console.log('[bootstrap] /api/users/me unreachable:', e instanceof Error ? e.message : e);
     }
-  } catch (e) {
-    console.log('[bootstrap] /api/users/me unreachable:', e instanceof Error ? e.message : e);
   }
 
   // 1b. payload.user forwarded from the SLUGGER_AUTH postMessage
+  // Used when Slugger's widget-token endpoint is down and no bootstrapToken is available
   console.log('[bootstrap] payload.user from postMessage:', JSON.stringify(payloadUser));
-  if (!sluggerUser && payloadUser && typeof payloadUser.id !== 'undefined') {
+  if (!sluggerUser && hasPayloadUser) {
     sluggerUser = payloadUser;
   }
 
   // 1c. Last resort: validate as Cognito RS256 JWT directly
-  if (!sluggerUser) {
+  if (!sluggerUser && hasToken) {
     sluggerUser = await validateCognitoJwt(token);
   }
 
