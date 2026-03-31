@@ -1,6 +1,7 @@
-import { FormEvent, KeyboardEvent, useMemo, useState } from 'react';
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { playerInfoApi } from '../services/api';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -67,8 +68,59 @@ export function PlayerInfo() {
   const [otherItemInput, setOtherItemInput] = useState('');
   const [otherItemError, setOtherItemError] = useState('');
   const [otherDetails, setOtherDetails] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [saveError, setSaveError] = useState('');
+
+  const isStandardDietaryOption = (value: string) =>
+    DIETARY_ITEM_OPTIONS.some((option) => option !== 'Other' && option.toLowerCase() === value.toLowerCase());
+
+  useEffect(() => {
+    if (!user?.id) {
+      setPreferredName('');
+      setSelectedDietaryItems([]);
+      setOtherDetails('');
+      setShowOtherItemInput(false);
+      setOtherItemInput('');
+      setOtherItemError('');
+      setSaveMessage('');
+      setSaveError('');
+      return;
+    }
+
+    let isActive = true;
+
+    const loadPlayerInfo = async () => {
+      try {
+        setIsLoading(true);
+        setSaveError('');
+
+        const playerInfo = await playerInfoApi.getPlayerInfo(user.id);
+        if (!isActive) return;
+
+        setPreferredName(playerInfo.preferences?.preferred_name ?? '');
+        setOtherDetails(playerInfo.preferences?.other_details ?? '');
+        setSelectedDietaryItems(playerInfo.restrictions.map((entry) => entry.restriction));
+        setShowOtherItemInput(false);
+        setOtherItemInput('');
+        setOtherItemError('');
+      } catch (error) {
+        if (!isActive) return;
+        setSaveError(error instanceof Error ? error.message : 'Failed to load player information.');
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadPlayerInfo();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id]);
 
   const hasDuplicateItem = (value: string) =>
     selectedDietaryItems.some((item) => item.toLowerCase() === value.toLowerCase());
@@ -123,6 +175,13 @@ export function PlayerInfo() {
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaveMessage('');
+    setSaveError('');
+
+    if (!user?.id) {
+      setSaveError('Unable to save player information because no player account is loaded.');
+      return;
+    }
+
     setIsSaving(true);
 
     const payload = {
@@ -132,13 +191,27 @@ export function PlayerInfo() {
       submittedAt: new Date().toISOString(),
     };
 
-    // TODO: send player info to Postgres via AWS API; clubhouse managers will use this info.
-    console.log('Player info payload:', payload);
+    try {
+      await Promise.all([
+        playerInfoApi.upsertPlayerPreferences(user.id, {
+          preferred_name: payload.preferredName || null,
+          other_details: payload.otherDetails || null,
+        }),
+        playerInfoApi.replacePlayerRestrictions(
+          user.id,
+          payload.selectedDietaryItems.map((item) => ({
+            restriction: item,
+            is_custom: !isStandardDietaryOption(item),
+          }))
+        ),
+      ]);
 
-    await new Promise((resolve) => setTimeout(resolve, 700));
-
-    setIsSaving(false);
-    setSaveMessage('Saved. Clubhouse managers can now use this information.');
+      setSaveMessage('Saved. Clubhouse managers can now use this information.');
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Failed to save player information.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -251,9 +324,15 @@ export function PlayerInfo() {
         </Card>
 
         <div className="space-y-2">
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save'}
+          <Button type="submit" disabled={isLoading || isSaving}>
+            {isLoading ? 'Loading...' : isSaving ? 'Saving...' : 'Save'}
           </Button>
+          {saveError && (
+            <Alert variant="destructive">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{saveError}</AlertDescription>
+            </Alert>
+          )}
           {saveMessage && (
             <Alert>
               <AlertTitle>Saved</AlertTitle>
